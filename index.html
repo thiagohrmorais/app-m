@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M Assistente</title>
+    <!-- Carrega Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Carrega Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Carrega Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <style>
+        /* Fonte Inter */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar */
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 3px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        /* Estilo para "..." do loading */
+        .loading-dots span {
+            animation: blink 1.4s infinite both;
+        }
+        .loading-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .loading-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes blink {
+            0% { opacity: 0.2; }
+            20% { opacity: 1; }
+            100% { opacity: 0.2; }
+        }
+        /* Estilo para o botão de gravação pulsando */
+        .recording-pulse {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+
+    <!-- Container Principal da Aplicação -->
+    <div id="app" class="h-screen w-screen flex items-center justify-center">
+        <!-- Tela de Loading Inicial -->
+        <div id="initial-loading" class="flex flex-col items-center gap-4">
+            <svg class="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-lg font-medium">Carregando Assistente M...</p>
+        </div>
+
+        <!-- Tela de Autenticação (Login / Registro) -->
+        <div id="auth-view" class="hidden w-full max-w-lg p-6 md:p-8">
+            <div class="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-8">
+                <div class="flex justify-center mb-6">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-blue-600">
+                        <path d="M12 2C6.477 2 2 6.477 2 12C2 17.523 6.477 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2ZM12 4C16.418 4 20 7.582 20 12C20 16.418 16.418 20 12 20C7.582 20 4 16.418 4 12C4 7.582 7.582 4 12 4Z" fill="currentColor" opacity="0.3"/>
+                        <path d="M12 6C8.686 6 6 8.686 6 12C6 15.314 8.686 18 12 18C15.314 18 18 15.314 18 12C18 8.686 15.314 6 12 6ZM12 16C9.791 16 8 14.209 8 12C8 9.791 9.791 8 12 8C14.209 8 16 9.791 16 12C16 14.209 14.209 16 12 16Z" fill="currentColor"/>
+                        <path d="M12 10C10.895 10 10 10.895 10 12C10 13.105 10.895 14 12 14C13.105 14 14 13.105 14 12C14 10.895 13.105 10 12 10Z" fill="currentColor"/>
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-bold text-center mb-2">Bem-vindo ao M Assistente</h2>
+                <p id="auth-description" class="text-center text-slate-500 dark:text-slate-400 mb-6">Faça login para continuar</p>
+
+                <!-- Mensagem de Erro/Sucesso -->
+                <div id="auth-message" class="hidden p-3 rounded-lg mb-4 text-sm"></div>
+
+                <!-- Formulário de Login -->
+                <form id="login-form" class="space-y-4">
+                    <div>
+                        <label for="login-email" class="block text-sm font-medium mb-1">Email</label>
+                        <input type="email" id="login-email" required class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="voce@email.com">
+                    </div>
+                    <div>
+                        <label for="login-password" class="block text-sm font-medium mb-1">Senha</label>
+                        <input type="password" id="login-password" required class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="••••••••">
+                    </div>
+                    <button type="submit" id="login-button" class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200 flex items-center justify-center">
+                        Entrar
+                    </button>
+                    <p class="text-sm text-center">
+                        Não tem uma conta? 
+                        <a href="#" id="show-register" class="font-medium text-blue-500 hover:underline">Cadastre-se</a>
+                    </p>
+                </form>
+
+                <!-- Formulário de Registro -->
+                <form id="register-form" class="hidden space-y-4">
+                    <!-- Campos da tabela m_assistente_profiles -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="reg-fullname" class="block text-sm font-medium mb-1">Nome Completo</label>
+                            <input type="text" id="reg-fullname" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Seu Nome Completo">
+                        </div>
+                        <div>
+                            <label for="reg-email" class="block text-sm font-medium mb-1">Email *</label>
+                            <input type="email" id="reg-email" required class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="voce@email.com">
+                        </div>
+                    </div>
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="reg-birthdate" class="block text-sm font-medium mb-1">Data de Nascimento</label>
+                            <input type="date" id="reg-birthdate" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label for="reg-cpf" class="block text-sm font-medium mb-1">CPF</label>
+                            <input type="text" id="reg-cpf" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="000.000.000-00">
+                        </div>
+                    </div>
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="reg-company-name" class="block text-sm font-medium mb-1">Empresa</label>
+                            <input type="text" id="reg-company-name" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nome da Empresa">
+                        </div>
+                        <div>
+                            <label for="reg-company-position" class="block text-sm font-medium mb-1">Cargo</label>
+                            <input type="text" id="reg-company-position" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Seu Cargo">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="reg-password" class="block text-sm font-medium mb-1">Senha *</label>
+                        <input type="password" id="reg-password" required minlength="6" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Mínimo 6 caracteres">
+                    </div>
+                    
+                    <button type="submit" id="register-button" class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200 flex items-center justify-center">
+                        Criar Conta
+                    </button>
+                    <p class="text-sm text-center">
+                        Já tem uma conta? 
+                        <a href="#" id="show-login" class="font-medium text-blue-500 hover:underline">Faça login</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tela de Chat -->
+        <div id="chat-view" class="hidden h-full w-full flex flex-col">
+            <!-- Header do Chat -->
+            <header class="bg-white dark:bg-slate-800 shadow-sm w-full p-4 flex justify-between items-center z-10 border-b border-slate-200 dark:border-slate-700">
+                <div class="flex items-center gap-3">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-blue-600">
+                         <path d="M12 2C6.477 2 2 6.477 2 12C2 17.523 6.477 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2ZM12 4C16.418 4 20 7.582 20 12C20 16.418 16.418 20 12 20C7.582 20 4 16.418 4 12C4 7.582 7.582 4 12 4Z" fill="currentColor" opacity="0.3"/>
+                        <path d="M12 6C8.686 6 6 8.686 6 12C6 15.314 8.686 18 12 18C15.314 18 18 15.314 18 12C18 8.686 15.314 6 12 6ZM12 16C9.791 16 8 14.209 8 12C8 9.791 9.791 8 12 8C14.209 8 16 9.791 16 12C16 14.209 14.209 16 12 16Z" fill="currentColor"/>
+                        <path d="M12 10C10.895 10 10 10.895 10 12C10 13.105 10.895 14 12 14C13.105 14 14 13.105 14 12C14 10.895 13.105 10 12 10Z" fill="currentColor"/>
+                    </svg>
+                    <h1 class="text-xl font-semibold">M Assistente</h1>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span id="user-email" class="text-sm text-slate-500 dark:text-slate-400 hidden md:block"></span>
+                    <button id="logout-button" class="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded-lg p-2 bg-slate-100 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/50">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                        <span class="hidden md:inline">Sair</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Área de Mensagens -->
+            <main class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-10">
+                <div class="max-w-3xl mx-auto w-full">
+                    <div id="chat-messages" class="chat-messages space-y-6 overflow-y-auto" style="max-height: calc(100vh - 200px);">
+                        <!-- Mensagem de Boas-vindas -->
+                        <div class="chat-message-ai">
+                            <div class="flex items-start gap-3">
+                                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm">M</div>
+                                <div class="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm max-w-full">
+                                    <p class="font-semibold mb-1">M Assistente</p>
+                                    <p>Olá! Como posso ajudar você hoje?</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Mensagens dinâmicas serão injetadas aqui -->
+
+                    </div>
+                </div>
+            </main>
+
+            <!-- Área de Input -->
+            <footer class="w-full p-4 md:p-6 lg:p-8 bg-gradient-to-t from-slate-200/50 dark:from-slate-900/50 to-transparent">
+                <div class="max-w-3xl mx-auto">
+                    <!-- Input de arquivo oculto para imagens -->
+                    <input type="file" id="image-upload" accept="image/*" class="hidden">
+
+                    <form id="chat-form" class="relative">
+                        <div class="flex items-center bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-2 border border-slate-200 dark:border-slate-700">
+                            <!-- Botão de Anexo (Imagem) -->
+                            <button type="button" id="attach-image-button" class="p-3 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                <i data-lucide="image" class="w-5 h-5"></i>
+                            </button>
+                            <!-- Botão de Gravar (Áudio) -->
+                            <button type="button" id="record-audio-button" class="p-3 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                <i data-lucide="mic" class="w-5 h-5"></i>
+                            </button>
+
+                            <!-- Input de Texto -->
+                            <input type="text" id="chat-input" placeholder="Envie uma mensagem..." class="flex-1 px-4 py-3 bg-transparent text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none resize-none">
+
+                            <!-- Botão de Enviar -->
+                            <button type="submit" id="send-button" class="p-3 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:bg-slate-300 dark:disabled:bg-slate-600">
+                                <i data-lucide="arrow-up" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </form>
+                    <p class="text-xs text-center text-slate-500 dark:text-slate-400 mt-3">
+                        M Assistente pode cometer erros. Verifique informações importantes.
+                    </p>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <script type="module">
+        // Configuração do Supabase (Corrigido para tnxmedia)
+        const SUPABASE_URL = 'https://qedstcloovfgeblduykc.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlZHN0Y2xvb3ZmZ2VibGR1eWtjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMzk2MzQsImV4cCI6MjA3MDcxNTYzNH0.tq76Qk9pqwb1OutsLX79KgrQhIB8q2ekAcczwhHsxtU';
+        
+        // Configuração do n8n Webhook
+        const N8N_WEBHOOK_URL = 'https://n8n.tnxmedia.pro/webhook/70ff3726-77f4-4425-9c46-c7cb746431c7';
+        const N8N_WEBHOOK_SECRET = '2C5z7EpRHv3RH4M';
+
+        // Inicializa o cliente Supabase
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Referências de UI
+        const app = document.getElementById('app');
+        const initialLoadingView = document.getElementById('initial-loading');
+        const authView = document.getElementById('auth-view');
+        const chatView = document.getElementById('chat-view');
+        
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const showRegisterLink = document.getElementById('show-register');
+        const showLoginLink = document.getElementById('show-login');
+        const authMessage = document.getElementById('auth-message');
+        const authDescription = document.getElementById('auth-description');
+
+        const chatMessages = document.getElementById('chat-messages');
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const sendButton = document.getElementById('send-button');
+        const logoutButton = document.getElementById('logout-button');
+        const userEmailSpan = document.getElementById('user-email');
+
+        const recordAudioButton = document.getElementById('record-audio-button');
+        const attachImageButton = document.getElementById('attach-image-button');
+        
+        // Referência para o input de imagem oculto
+        const imageUploadInput = document.getElementById('image-upload');
+        
+        // Variáveis para gravação de áudio
+        let isRecording = false;
+        let mediaRecorder;
+        let audioChunks = [];
+
+        let currentUser = null;
+        let messageHistory = [];
+
+        /**
+         * Mostra uma mensagem na tela de autenticação.
+         * @param {string} message - A mensagem a ser exibida.
+         * @param {'success' | 'error'} type - O tipo de mensagem.
+         */
+        function showAuthMessage(message, type = 'error') {
+            authMessage.textContent = message;
+            authMessage.className = type === 'error' 
+                ? 'block p-3 rounded-lg mb-4 text-sm bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300' 
+                : 'block p-3 rounded-lg mb-4 text-sm bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300';
+        }
+
+        /**
+         * Alterna entre as telas de Login e Registro.
+         * @param {'login' | 'register'} view - A tela para exibir.
+         */
+        function toggleAuthView(view) {
+            authMessage.className = 'hidden'; // Esconde mensagem
+            if (view === 'login') {
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+                authDescription.textContent = 'Faça login para continuar';
+            } else {
+                loginForm.classList.add('hidden');
+                registerForm.classList.remove('hidden');
+                authDescription.textContent = 'Crie sua conta para começar';
+            }
+        }
+
+        /**
+         * Lida com o envio do formulário de Login.
+         */
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const button = document.getElementById('login-button');
+            button.disabled = true;
+            button.innerHTML = '<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+            if (error) {
+                showAuthMessage(error.message, 'error');
+            } else if (data.user) {
+                // Login bem-sucedido, a transição será tratada pelo onAuthStateChange
+            }
+
+            button.disabled = false;
+            button.innerHTML = 'Entrar';
+        }
+
+        /**
+         * Lida com o envio do formulário de Registro.
+         */
+        async function handleRegister(e) {
+            e.preventDefault();
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-password').value;
+            const fullName = document.getElementById('reg-fullname').value;
+            const birthDate = document.getElementById('reg-birthdate').value;
+            const cpf = document.getElementById('reg-cpf').value;
+            const companyName = document.getElementById('reg-company-name').value;
+            const companyPosition = document.getElementById('reg-company-position').value;
+            
+            const button = document.getElementById('register-button');
+            button.disabled = true;
+            button.innerHTML = '<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+
+            // 1. Criar o usuário no Supabase Auth
+            const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+                email,
+                password,
+            });
+
+            if (authError) {
+                showAuthMessage(authError.message, 'error');
+                button.disabled = false;
+                button.innerHTML = 'Criar Conta';
+                return;
+            }
+
+            if (!authData.user) {
+                 showAuthMessage('Erro ao criar usuário, tente novamente.', 'error');
+                button.disabled = false;
+                button.innerHTML = 'Criar Conta';
+                return;
+            }
+            
+            // 2. Inserir os dados na tabela public.m_assistente_profiles
+            //    Usando o ID do usuário recém-criado
+            const { error: profileError } = await supabaseClient
+                .from('m_assistente_profiles')
+                .insert({
+                    id: authData.user.id, // Vincula o ID do Auth ao ID do perfil
+                    email: email,
+                    full_name: fullName || null,
+                    birth_date: birthDate || null,
+                    cpf: cpf || null,
+                    company_name: companyName || null,
+                    company_position: companyPosition || null,
+                    // address, plan, etc., usarão os defaults da tabela
+                });
+
+            if (profileError) {
+                // Se der erro aqui, o usuário foi criado no Auth mas não no profiles
+                // Idealmente, deveríamos deletar o usuário do Auth ou tentar de novo
+                showAuthMessage(`Erro ao criar perfil: ${profileError.message}. Tente fazer login.`, 'error');
+                button.disabled = false;
+                button.innerHTML = 'Criar Conta';
+                return;
+            }
+
+            // Sucesso!
+            showAuthMessage('Conta criada! Por favor, verifique seu email para confirmar e depois faça login.', 'success');
+            toggleAuthView('login');
+            button.disabled = false;
+            button.innerHTML = 'Criar Conta';
+        }
+
+        /**
+         * Lida com o Logout do usuário.
+         */
+        async function handleLogout() {
+            const { error } = await supabaseClient.auth.signOut();
+            if (error) {
+                console.error('Erro ao sair:', error.message);
+            }
+            // A transição será tratada pelo onAuthStateChange
+        }
+
+        /**
+         * Adiciona uma mensagem à interface de chat.
+         * @param {'user' | 'ai' | 'system'} role - Quem enviou a mensagem.
+         * @param {string} content - O conteúdo da mensagem (pode ser HTML).
+         */
+        function addMessageToChat(role, content) {
+            const messageEl = document.createElement('div');
+            
+            if (role === 'user') {
+                messageEl.className = 'chat-message-user';
+                messageEl.innerHTML = `
+                    <div class="flex items-start gap-3 justify-end">
+                        <div class="bg-blue-600 text-white rounded-xl p-4 shadow-sm max-w-[80%]">
+                            <p>${content}</p>
+                        </div>
+                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-slate-300 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-300 font-semibold text-sm">
+                            <i data-lucide="user" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                `;
+            } else if (role === 'ai') {
+                messageEl.className = 'chat-message-ai';
+                messageEl.innerHTML = `
+                    <div class="flex items-start gap-3">
+                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm">M</div>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm max-w-[80%]">
+                            <p class="font-semibold mb-1">M Assistente</p>
+                            <div>${content}</div>
+                        </div>
+                    </div>
+                `;
+            } else { // system
+                messageEl.className = 'chat-message-system text-center';
+                messageEl.innerHTML = `
+                    <p class="text-sm text-red-500 dark:text-red-400 italic p-2 bg-red-100 dark:bg-red-900/50 rounded-lg">${content}</p>
+                `;
+            }
+
+            chatMessages.appendChild(messageEl);
+            // Renderiza ícones do Lucide que acabaram de ser adicionados
+            lucide.createIcons();
+            // Rola para a nova mensagem
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        /**
+         * Mostra o indicador de "digitando..."
+         */
+        function showLoadingIndicator() {
+            const loadingEl = document.createElement('div');
+            loadingEl.id = 'loading-indicator';
+            loadingEl.className = 'chat-message-ai';
+            loadingEl.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm">M</div>
+                    <div class="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm">
+                        <div class="loading-dots flex space-x-1">
+                            <span class="w-2 h-2 bg-slate-400 rounded-full"></span>
+                            <span class="w-2 h-2 bg-slate-400 rounded-full"></span>
+                            <span class="w-2 h-2 bg-slate-400 rounded-full"></span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(loadingEl);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        /**
+         * Remove o indicador de "digitando..."
+         */
+        function hideLoadingIndicator() {
+            const loadingEl = document.getElementById('loading-indicator');
+            if (loadingEl) {
+                loadingEl.remove();
+            }
+        }
+        
+        /**
+         * Lida com o envio de uma mensagem de texto.
+         */
+        async function handleSendMessage(e) {
+            e.preventDefault();
+            const text = chatInput.value.trim();
+            if (!text || !currentUser) return;
+
+            // Limpa o input e desabilita o botão
+            chatInput.value = '';
+            sendButton.disabled = true;
+            
+            // Adiciona a mensagem do usuário à UI
+            addMessageToChat('user', text);
+            // Mostra o loading
+            showLoadingIndicator();
+
+            try {
+                // Envia a mensagem para o webhook n8n
+                const response = await fetch(N8N_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'webapp-secret': N8N_WEBHOOK_SECRET
+                    },
+                    // Payload padronizado
+                    body: JSON.stringify({
+                        userId: currentUser.id, // Envia o ID de usuário do Supabase
+                        message: text,
+                        messageType: "text" // Tipo padronizado
+                    })
+                });
+                
+                hideLoadingIndicator();
+
+                if (!response.ok) {
+                    throw new Error(`Erro do servidor n8n: ${response.status} ${response.statusText}`);
+                }
+
+                const aiResponse = await response.text();
+                addMessageToChat('ai', aiResponse);
+
+            } catch (error) {
+                console.error('Erro ao enviar mensagem:', error);
+                hideLoadingIndicator();
+                addMessageToChat('system', `Erro ao conectar com o assistente: ${error.message}`);
+            } finally {
+                sendButton.disabled = false;
+                chatInput.focus();
+            }
+        }
+
+        /**
+         * Lida com o envio de mensagens de mídia (áudio ou imagem).
+         * @param {string} base64Data - A string Base64 do arquivo (data:mime/type;base64,...).
+         * @param {'audio' | 'image'} mediaType - O tipo de mídia.
+         */
+        async function sendMediaMessage(base64Data, mediaType) {
+            if (!currentUser) return;
+
+            // Adiciona uma pré-visualização da mídia à UI
+            if (mediaType === 'image') {
+                addMessageToChat('user', `<img src="${base64Data}" class="max-w-xs rounded-lg" alt="Imagem enviada">`);
+            } else {
+                addMessageToChat('user', `<audio controls src="${base64Data}"></audio>`);
+            }
+            
+            // Mostra o loading
+            showLoadingIndicator();
+
+            try {
+                // Envia a mídia em Base64 para o webhook n8n
+                const response = await fetch(N8N_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'webapp-secret': N8N_WEBHOOK_SECRET
+                    },
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        base64Data: base64Data, // A string Base64
+                        messageType: mediaType // 'image' ou 'audio'
+                    })
+                });
+                
+                hideLoadingIndicator();
+
+                if (!response.ok) {
+                    throw new Error(`Erro do servidor n8n: ${response.status} ${response.statusText}`);
+                }
+
+                const aiResponse = await response.text();
+                // A resposta do n8n (transcrição ou análise) será tratada pelo 'M'
+                addMessageToChat('ai', aiResponse);
+
+            } catch (error) {
+                console.error('Erro ao enviar mídia:', error);
+                hideLoadingIndicator();
+                addMessageToChat('system', `Erro ao processar mídia: ${error.message}`);
+            }
+        }
+
+        /**
+         * Inicia ou para a gravação de áudio.
+         */
+        async function handleToggleRecording() {
+            const icon = recordAudioButton.querySelector('i');
+
+            if (isRecording) {
+                // Para a gravação
+                mediaRecorder.stop();
+                isRecording = false;
+                recordAudioButton.classList.remove('text-red-500', 'recording-pulse');
+                icon.outerHTML = '<i data-lucide="mic" class="w-5 h-5"></i>';
+                lucide.createIcons();
+                chatInput.disabled = false;
+            } else {
+                // Começa a gravação
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' }); // Usamos webm
+                    audioChunks = []; // Reseta os pedaços
+
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const reader = new FileReader();
+                        reader.readAsDataURL(audioBlob);
+                        reader.onloadend = () => {
+                            const base64String = reader.result;
+                            sendMediaMessage(base64String, 'audio'); // Envia o áudio
+                        };
+                        // Libera o stream da câmera/microfone
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    recordAudioButton.classList.add('text-red-500', 'recording-pulse');
+                    icon.outerHTML = '<i data-lucide="stop-circle" class="w-5 h-5"></i>';
+                    lucide.createIcons();
+                    chatInput.disabled = true; // Desabilita input de texto
+                
+                } catch (err) {
+                    console.error("Erro ao acessar microfone:", err);
+                    addMessageToChat('system', 'Não foi possível acessar seu microfone. Verifique as permissões do navegador.');
+                }
+            }
+        }
+
+        /**
+         * Lida com a seleção de imagem.
+         */
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+                const base64String = reader.result;
+                sendMediaMessage(base64String, 'image'); // Envia a imagem
+            };
+            reader.onerror = (error) => {
+                console.error("Erro ao ler arquivo:", error);
+                addMessageToChat('system', 'Erro ao processar a imagem.');
+            };
+            
+            // Limpa o valor do input para permitir selecionar o mesmo arquivo novamente
+            event.target.value = null;
+        }
+        
+        /**
+         * Atualiza a UI com base no estado de autenticação.
+         */
+        function updateUserState(user) {
+            currentUser = user;
+            if (user) {
+                // Usuário está logado
+                initialLoadingView.classList.add('hidden');
+                authView.classList.add('hidden');
+                chatView.classList.remove('hidden');
+                userEmailSpan.textContent = user.email;
+            } else {
+                // Usuário não está logado
+                initialLoadingView.classList.add('hidden');
+                authView.classList.remove('hidden');
+                chatView.classList.add('hidden');
+            }
+        }
+        
+        /**
+         * Inicialização da Aplicação
+         */
+        async function initApp() {
+            // Renderiza ícones iniciais
+            lucide.createIcons();
+
+            // Adiciona listeners de eventos
+            showRegisterLink.addEventListener('click', (e) => { e.preventDefault(); toggleAuthView('register'); });
+            showLoginLink.addEventListener('click', (e) => { e.preventDefault(); toggleAuthView('login'); });
+            
+            loginForm.addEventListener('submit', handleLogin);
+            registerForm.addEventListener('submit', handleRegister);
+            logoutButton.addEventListener('click', handleLogout);
+            
+            chatForm.addEventListener('submit', handleSendMessage);
+            
+            // Listeners de mídia atualizados
+            recordAudioButton.addEventListener('click', handleToggleRecording);
+            attachImageButton.addEventListener('click', () => imageUploadInput.click()); // Aciona o input oculto
+            imageUploadInput.addEventListener('change', handleImageUpload); // Ouve mudanças no input
+
+            // Verifica a sessão atual
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            updateUserState(session?.user || null);
+
+            // Ouve mudanças no estado de autenticação (login, logout)
+            supabaseClient.auth.onAuthStateChange((event, session) => {
+                updateUserState(session?.user || null);
+            });
+        }
+        
+        // Inicia a aplicação
+        initApp();
+
+    </script>
+</body>
+</html>
+
