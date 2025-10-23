@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" class=""> <!-- Classe dark será adicionada aqui -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,709 +10,950 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Carrega Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    
+    <!-- Biblioteca para Markdown (Renderiza a resposta do AI) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
     <style>
-        /* Fonte Inter */
+        /* Estilos CSS (sem alterações significativas, apenas ajustes visuais menores) */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        /* Custom scrollbar */
-        .chat-messages::-webkit-scrollbar {
-            width: 6px;
-        }
-        .chat-messages::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-        .chat-messages::-webkit-scrollbar-thumb {
-            background: #94a3b8;
-            border-radius: 3px;
-        }
-        .chat-messages::-webkit-scrollbar-thumb:hover {
-            background: #475569;
-        }
-        /* Estilo para "..." do loading */
-        .loading-dots span {
-            animation: blink 1.4s infinite both;
-        }
-        .loading-dots span:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-        .loading-dots span:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-        @keyframes blink {
-            0% { opacity: 0.2; }
-            20% { opacity: 1; }
-            100% { opacity: 0.2; }
-        }
-        /* Estilo para o botão de gravação pulsando */
-        .recording-pulse {
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
+        html, body { font-family: 'Inter', sans-serif; overflow: hidden; height: 100%; }
+        #app { height: 100%; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: #94a3b8; }
+        .dark .custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
+        .dark .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: #475569; }
+        .loading-dots span { animation: blink 1.4s infinite both; }
+        .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes blink { 0% { opacity: 0.2; } 20% { opacity: 1; } 100% { opacity: 0.2; } }
+        .recording-pulse { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        #recording-timer { font-size: 0.7rem; margin-left: 0.5rem; color: #ef4444; font-variant-numeric: tabular-nums;}
+        #chat-input { max-height: 150px; min-height: 52px; height: 52px; overflow-y: auto; }
+        .attachment-menu { transition: opacity 0.2s ease, transform 0.2s ease; }
+        .markdown-content > *:first-child { margin-top: 0; }
+        .markdown-content > *:last-child { margin-bottom: 0; }
+        .markdown-content p { margin-bottom: 0.5rem; line-height: 1.6; }
+        .markdown-content ul, .markdown-content ol { margin-left: 1.5rem; margin-bottom: 0.5rem; list-style-position: outside; }
+        .markdown-content li { margin-bottom: 0.25rem; }
+        .markdown-content strong { font-weight: 600; }
+        .markdown-content code:not(pre > code) { background-color: #e2e8f0; color: #1e293b; padding: 0.125rem 0.3rem; border-radius: 0.25rem; font-size: 0.875em; font-family: monospace; }
+        .dark .markdown-content code:not(pre > code) { background-color: #334155; color: #e2e8f0; }
+        .markdown-content pre { position: relative; background-color: #f1f5f9; color: #0f172a; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 0.75rem; font-size: 0.875em; border: 1px solid #e2e8f0; }
+        .dark .markdown-content pre { background-color: #0f172a; color: #cbd5e1; border: 1px solid #334155; }
+        .markdown-content pre code { background-color: transparent !important; color: inherit !important; padding: 0 !important; font-family: 'Courier New', Courier, monospace; line-height: 1.5; }
+        .message-actions { position: absolute; top: 0.5rem; right: 0.5rem; display: flex; gap: 0.25rem; opacity: 0; transition: opacity 0.2s ease; z-index: 10;} /* Adicionado z-index */
+        .chat-message-ai .group:hover .message-actions { opacity: 1; } /* Ajustado seletor */
+        .copy-button { padding: 0.25rem; background-color: #e2e8f0; color: #475569; border: none; border-radius: 0.25rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .dark .copy-button { background-color: #334155; color: #cbd5e1; }
+        .copy-button:hover { background-color: #cbd5e1; }
+        .dark .copy-button:hover { background-color: #475569; }
+        .copy-button .lucide { width: 0.875rem; height: 0.875rem; }
+        .copy-button.copied { background-color: #22c55e; color: white; }
+        .dark .copy-button.copied { background-color: #16a34a; }
+        .markdown-content pre .copy-button { display: none; }
+         .copy-code-button { position: absolute; top: 0.5rem; right: 0.5rem; padding: 0.25rem 0.5rem; background-color: #e2e8f0; color: #475569; border: none; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 500; cursor: pointer; opacity: 0; transition: opacity 0.2s ease; z-index: 10; } /* Adicionado z-index */
+        .dark .copy-code-button { background-color: #334155; color: #cbd5e1; }
+        .markdown-content pre:hover .copy-code-button { opacity: 1; }
+        .copy-code-button:hover { background-color: #cbd5e1; }
+        .dark .copy-code-button:hover { background-color: #475569; }
+        .copy-code-button.copied { background-color: #22c55e; color: white; }
+        .dark .copy-code-button.copied { background-color: #16a34a; }
+        .conversation-button.active { background-color: #f1f5f9; }
+        .dark .conversation-button.active { background-color: #334155; }
+        .skeleton-item { height: 2.5rem; background-color: #e2e8f0; border-radius: 0.375rem; margin-bottom: 0.25rem; }
+        .dark .skeleton-item { background-color: #334155; }
+        #toast-container { position: fixed; bottom: 1rem; right: 1rem; z-index: 100; display: flex; flex-direction: column; gap: 0.5rem; }
+        .toast { padding: 0.75rem 1rem; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); font-size: 0.875rem; display: flex; align-items: center; gap: 0.5rem; animation: toast-in 0.3s ease forwards; }
+        @keyframes toast-in { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+        .toast.toast-out { animation: toast-out 0.3s ease forwards; }
+        @keyframes toast-out { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }
+        .toast-info { background-color: #3b82f6; color: white; } .toast-success { background-color: #22c55e; color: white; } .toast-error { background-color: #ef4444; color: white; } .toast-warning { background-color: #f59e0b; color: white; }
+        .dark .toast-info { background-color: #2563eb; } .dark .toast-success { background-color: #16a34a; } .dark .toast-error { background-color: #dc2626; } .dark .toast-warning { background-color: #d97706; }
+        #scroll-to-bottom-button { position: absolute; bottom: 1rem; right: 1rem; z-index: 20; background-color: #e2e8f0; color: #475569; padding: 0.5rem; border-radius: 9999px; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); cursor: pointer; transition: opacity 0.2s ease; }
+        .dark #scroll-to-bottom-button { background-color: #334155; color: #cbd5e1; }
+        #scroll-to-bottom-button:hover { background-color: #cbd5e1; } .dark #scroll-to-bottom-button:hover { background-color: #475569; }
+        /* Upload Preview */
+        #upload-preview-container { border: 1px dashed #cbd5e1; padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 0.5rem; display: flex; align-items: center; justify-content: space-between; }
+        .dark #upload-preview-container { border-color: #475569; }
+        #upload-preview img, #upload-preview video { max-height: 50px; max-width: 100px; border-radius: 0.25rem; object-fit: cover; }
+        #upload-preview span { font-size: 0.8rem; color: #64748b; margin-left: 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .dark #upload-preview span { color: #94a3b8; }
+        #cancel-upload-button { padding: 0.25rem; border-radius: 9999px; background-color: #f1f5f9; color: #64748b; }
+        .dark #cancel-upload-button { background-color: #334155; color: #94a3b8; }
+        #cancel-upload-button:hover { background-color: #e2e8f0; }
+        .dark #cancel-upload-button:hover { background-color: #475569; }
+
+        @media (max-width: 767px) { #sidebar { position: fixed; top: 0; left: 0; bottom: 0; height: 100%; } }
     </style>
 </head>
 <body class="bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
 
-    <!-- Container Principal da Aplicação -->
-    <div id="app" class="h-screen w-screen flex items-center justify-center">
-        <!-- Tela de Loading Inicial -->
+    <div id="app" class="flex items-center justify-center">
         <div id="initial-loading" class="flex flex-col items-center gap-4">
-            <svg class="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
+            <svg class="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
             <p class="text-lg font-medium">Carregando Assistente M...</p>
         </div>
 
-        <!-- Tela de Autenticação (Login / Registro) -->
         <div id="auth-view" class="hidden w-full max-w-lg p-6 md:p-8">
-            <div class="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-8">
-                <div class="flex justify-center mb-6">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-blue-600">
-                        <path d="M12 2C6.477 2 2 6.477 2 12C2 17.523 6.477 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2ZM12 4C16.418 4 20 7.582 20 12C20 16.418 16.418 20 12 20C7.582 20 4 16.418 4 12C4 7.582 7.582 4 12 4Z" fill="currentColor" opacity="0.3"/>
-                        <path d="M12 6C8.686 6 6 8.686 6 12C6 15.314 8.686 18 12 18C15.314 18 18 15.314 18 12C18 8.686 15.314 6 12 6ZM12 16C9.791 16 8 14.209 8 12C8 9.791 9.791 8 12 8C14.209 8 16 9.791 16 12C16 14.209 14.209 16 12 16Z" fill="currentColor"/>
-                        <path d="M12 10C10.895 10 10 10.895 10 12C10 13.105 10.895 14 12 14C13.105 14 14 13.105 14 12C14 10.895 13.105 10 12 10Z" fill="currentColor"/>
-                    </svg>
-                </div>
+             <div class="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-8">
+                <div class="flex justify-center mb-6"> <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-blue-600"> <path d="M12 2C6.477 2 2 6.477 2 12C2 17.523 6.477 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2ZM12 4C16.418 4 20 7.582 20 12C20 16.418 16.418 20 12 20C7.582 20 4 16.418 4 12C4 7.582 7.582 4 12 4Z" fill="currentColor" opacity="0.3"/> <path d="M12 6C8.686 6 6 8.686 6 12C6 15.314 8.686 18 12 18C15.314 18 18 15.314 18 12C18 8.686 15.314 6 12 6ZM12 16C9.791 16 8 14.209 8 12C8 9.791 9.791 8 12 8C14.209 8 16 9.791 16 12C16 14.209 14.209 16 12 16Z" fill="currentColor"/> <path d="M12 10C10.895 10 10 10.895 10 12C10 13.105 10.895 14 12 14C13.105 14 14 13.105 14 12C14 10.895 13.105 10 12 10Z" fill="currentColor"/> </svg> </div>
                 <h2 class="text-2xl font-bold text-center mb-2">Bem-vindo ao M Assistente</h2>
                 <p id="auth-description" class="text-center text-slate-500 dark:text-slate-400 mb-6">Faça login para continuar</p>
-
-                <!-- Mensagem de Erro/Sucesso -->
                 <div id="auth-message" class="hidden p-3 rounded-lg mb-4 text-sm"></div>
-
-                <!-- Formulário de Login -->
-                <form id="login-form" class="space-y-4">
-                    <div>
-                        <label for="login-email" class="block text-sm font-medium mb-1">Email</label>
-                        <input type="email" id="login-email" required class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="voce@email.com">
-                    </div>
-                    <div>
-                        <label for="login-password" class="block text-sm font-medium mb-1">Senha</label>
-                        <input type="password" id="login-password" required class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="••••••••">
-                    </div>
-                    <button type="submit" id="login-button" class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200 flex items-center justify-center">
-                        Entrar
-                    </button>
-                    <p class="text-sm text-center">
-                        Não tem uma conta? 
-                        <a href="#" id="show-register" class="font-medium text-blue-500 hover:underline">Cadastre-se</a>
-                    </p>
-                </form>
-
-                <!-- Formulário de Registro -->
-                <form id="register-form" class="hidden space-y-4">
-                    <!-- Campos da tabela m_assistente_profiles -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label for="reg-fullname" class="block text-sm font-medium mb-1">Nome Completo</label>
-                            <input type="text" id="reg-fullname" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Seu Nome Completo">
-                        </div>
-                        <div>
-                            <label for="reg-email" class="block text-sm font-medium mb-1">Email *</label>
-                            <input type="email" id="reg-email" required class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="voce@email.com">
-                        </div>
-                    </div>
-                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label for="reg-birthdate" class="block text-sm font-medium mb-1">Data de Nascimento</label>
-                            <input type="date" id="reg-birthdate" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        <div>
-                            <label for="reg-cpf" class="block text-sm font-medium mb-1">CPF</label>
-                            <input type="text" id="reg-cpf" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="000.000.000-00">
-                        </div>
-                    </div>
-                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label for="reg-company-name" class="block text-sm font-medium mb-1">Empresa</label>
-                            <input type="text" id="reg-company-name" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nome da Empresa">
-                        </div>
-                        <div>
-                            <label for="reg-company-position" class="block text-sm font-medium mb-1">Cargo</label>
-                            <input type="text" id="reg-company-position" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Seu Cargo">
-                        </div>
-                    </div>
-                    <div>
-                        <label for="reg-password" class="block text-sm font-medium mb-1">Senha *</label>
-                        <input type="password" id="reg-password" required minlength="6" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Mínimo 6 caracteres">
-                    </div>
-                    
-                    <button type="submit" id="register-button" class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200 flex items-center justify-center">
-                        Criar Conta
-                    </button>
-                    <p class="text-sm text-center">
-                        Já tem uma conta? 
-                        <a href="#" id="show-login" class="font-medium text-blue-500 hover:underline">Faça login</a>
-                    </p>
-                </form>
+                <form id="login-form" class="space-y-4"> <div> <label for="login-email" class="block text-sm font-medium mb-1">Email</label> <input type="email" id="login-email" required class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="voce@email.com"> </div> <div> <label for="login-password" class="block text-sm font-medium mb-1">Senha</label> <input type="password" id="login-password" required class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="••••••••"> </div> <button type="submit" id="login-button" class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200 flex items-center justify-center"> Entrar </button> <p class="text-sm text-center"> Não tem uma conta? <a href="#" id="show-register" class="font-medium text-blue-500 hover:underline">Cadastre-se</a> </p> </form>
+                <form id="register-form" class="hidden space-y-4"> <div class="grid grid-cols-1 md:grid-cols-2 gap-4"> <div> <label for="reg-fullname" class="block text-sm font-medium mb-1">Nome Completo</label> <input type="text" id="reg-fullname" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Seu Nome Completo"> </div> <div> <label for="reg-email" class="block text-sm font-medium mb-1">Email *</label> <input type="email" id="reg-email" required class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="voce@email.com"> </div> </div> <div class="grid grid-cols-1 md:grid-cols-2 gap-4"> <div> <label for="reg-birthdate" class="block text-sm font-medium mb-1">Data de Nascimento</label> <input type="date" id="reg-birthdate" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"> </div> <div> <label for="reg-cpf" class="block text-sm font-medium mb-1">CPF</label> <input type="text" id="reg-cpf" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="000.000.000-00"> </div> </div> <div class="grid grid-cols-1 md:grid-cols-2 gap-4"> <div> <label for="reg-company-name" class="block text-sm font-medium mb-1">Empresa</label> <input type="text" id="reg-company-name" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nome da Empresa"> </div> <div> <label for="reg-company-position" class="block text-sm font-medium mb-1">Cargo</label> <input type="text" id="reg-company-position" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Seu Cargo"> </div> </div> <div> <label for="reg-password" class="block text-sm font-medium mb-1">Senha *</label> <input type="password" id="reg-password" required minlength="6" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Mínimo 6 caracteres"> </div> <button type="submit" id="register-button" class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200 flex items-center justify-center"> Criar Conta </button> <p class="text-sm text-center"> Já tem uma conta? <a href="#" id="show-login" class="font-medium text-blue-500 hover:underline">Faça login</a> </p> </form>
             </div>
         </div>
 
-        <!-- Tela de Chat -->
-        <div id="chat-view" class="hidden h-full w-full flex flex-col">
-            <!-- Header do Chat -->
-            <header class="bg-white dark:bg-slate-800 shadow-sm w-full p-4 flex justify-between items-center z-10 border-b border-slate-200 dark:border-slate-700">
-                <div class="flex items-center gap-3">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-blue-600">
-                         <path d="M12 2C6.477 2 2 6.477 2 12C2 17.523 6.477 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2ZM12 4C16.418 4 20 7.582 20 12C20 16.418 16.418 20 12 20C7.582 20 4 16.418 4 12C4 7.582 7.582 4 12 4Z" fill="currentColor" opacity="0.3"/>
-                        <path d="M12 6C8.686 6 6 8.686 6 12C6 15.314 8.686 18 12 18C15.314 18 18 15.314 18 12C18 8.686 15.314 6 12 6ZM12 16C9.791 16 8 14.209 8 12C8 9.791 9.791 8 12 8C14.209 8 16 9.791 16 12C16 14.209 14.209 16 12 16Z" fill="currentColor"/>
-                        <path d="M12 10C10.895 10 10 10.895 10 12C10 13.105 10.895 14 12 14C13.105 14 14 13.105 14 12C14 10.895 13.105 10 12 10Z" fill="currentColor"/>
-                    </svg>
-                    <h1 class="text-xl font-semibold">M Assistente</h1>
+        <div id="chat-view" class="hidden h-full w-full flex flex-row overflow-hidden">
+            <aside id="sidebar" class="w-64 bg-white dark:bg-slate-800 flex flex-col flex-shrink-0 z-20 border-r border-slate-200 dark:border-slate-700 transition-transform duration-300 ease-in-out -translate-x-full md:translate-x-0">
+                <div class="p-4 border-b border-slate-200 dark:border-slate-700 space-y-2">
+                    <button id="new-chat-button" class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+                        <i data-lucide="plus" class="w-5 h-5"></i>
+                        Nova Conversa
+                    </button>
+                    <!-- **NOVO:** Campo de Busca -->
+                    <div class="relative">
+                         <input type="search" id="search-input" placeholder="Buscar conversas..." class="w-full pl-8 pr-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                         <i data-lucide="search" class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    </div>
                 </div>
-                <div class="flex items-center gap-4">
-                    <span id="user-email" class="text-sm text-slate-500 dark:text-slate-400 hidden md:block"></span>
-                    <button id="logout-button" class="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded-lg p-2 bg-slate-100 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/50">
+
+                <nav id="conversation-history" class="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                    <div id="history-skeleton" class="animate-pulse space-y-1 p-2 hidden">
+                        <div class="skeleton-item"></div> <div class="skeleton-item w-5/6"></div> <div class="skeleton-item"></div> <div class="skeleton-item w-4/6"></div> <div class="skeleton-item w-5/6"></div>
+                    </div>
+                    <!-- Lista de conversas será renderizada aqui -->
+                </nav>
+
+                <div class="p-4 border-t border-slate-200 dark:border-slate-700 space-y-2">
+                    <div class="flex items-center justify-between">
+                         <div class="flex items-center gap-2 overflow-hidden">
+                            <span class="w-8 h-8 rounded-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="user" class="w-5 h-5"></i>
+                            </span>
+                            <span id="user-email" class="text-sm text-slate-500 dark:text-slate-400 truncate"></span>
+                        </div>
+                        <button id="theme-toggle-button" title="Alternar Tema" class="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex-shrink-0">
+                            <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
+                            <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
+                        </button>
+                    </div>
+                    <button id="logout-button" title="Sair" class="w-full flex items-center justify-start gap-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded-lg p-2 bg-slate-100 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/50">
                         <i data-lucide="log-out" class="w-4 h-4"></i>
-                        <span class="hidden md:inline">Sair</span>
+                        Sair
                     </button>
                 </div>
-            </header>
+            </aside>
 
-            <!-- Área de Mensagens -->
-            <main class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-10">
-                <div class="max-w-3xl mx-auto w-full">
-                    <div id="chat-messages" class="chat-messages space-y-6 overflow-y-auto" style="max-height: calc(100vh - 200px);">
-                        <!-- Mensagem de Boas-vindas -->
-                        <div class="chat-message-ai">
+            <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-10 hidden md:hidden"></div>
+
+            <div id="main-content-area" class="flex-1 flex flex-col h-full overflow-hidden relative">
+                <header class="bg-white dark:bg-slate-800 shadow-sm w-full p-4 flex justify-between items-center z-10 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
+                    <div class="flex items-center gap-3"> <button id="toggle-sidebar-button" class="p-2 rounded-lg text-slate-600 dark:text-slate-300 md:hidden"> <i data-lucide="menu" class="w-6 h-6"></i> </button> <div class="flex items-center gap-3"> <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-blue-600"> <path d="M12 2C6.477 2 2 6.477 2 12C2 17.523 6.477 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2ZM12 4C16.418 4 20 7.582 20 12C20 16.418 16.418 20 12 20C7.582 20 4 16.418 4 12C4 7.582 7.582 4 12 4Z" fill="currentColor" opacity="0.3"/> <path d="M12 6C8.686 6 6 8.686 6 12C6 15.314 8.686 18 12 18C15.314 18 18 15.314 18 12C18 8.686 15.314 6 12 6ZM12 16C9.791 16 8 14.209 8 12C8 9.791 9.791 8 12 8C14.209 8 16 9.791 16 12C16 14.209 14.209 16 12 16Z" fill="currentColor"/> <path d="M12 10C10.895 10 10 10.895 10 12C10 13.105 10.895 14 12 14C13.105 14 14 13.105 14 12C14 10.895 13.105 10 12 10Z" fill="currentColor"/> </svg> <h1 class="text-xl font-semibold">M Assistente</h1> </div> </div> <div class="flex items-center gap-2 md:gap-4"> <button id="delete-conversation-button" title="Apagar conversa" class="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded-lg p-2 bg-slate-100 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/50"> <i data-lucide="trash-2" class="w-4 h-4"></i> <span class="hidden md:inline">Apagar</span> </button> </div>
+                </header>
+
+                <main id="chat-messages" class="chat-messages custom-scrollbar flex-1 overflow-y-auto p-4 md:p-6 lg:p-10 relative">
+                    <div class="max-w-3xl mx-auto w-full space-y-6">
+                        <div id="welcome-message" class="chat-message-ai">
                             <div class="flex items-start gap-3">
                                 <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm">M</div>
-                                <div class="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm max-w-full">
+                                <div class="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm max-w-[80%] relative group">
                                     <p class="font-semibold mb-1">M Assistente</p>
-                                    <p>Olá! Como posso ajudar você hoje?</p>
+                                    <div class="markdown-content">
+                                        <p>Olá! Meu nome é M e estou aqui para ajudar. Você pode me enviar texto, áudio, imagens ou até vídeos.</p>
+                                        <p>Como posso ser útil hoje?</p>
+                                    </div>
+                                    <div class="message-actions">
+                                         <button class="copy-button copy-text-button" title="Copiar texto">
+                                             <i data-lucide="copy" class="w-4 h-4"></i>
+                                         </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Mensagens dinâmicas serão injetadas aqui -->
-
                     </div>
-                </div>
-            </main>
+                     <button id="scroll-to-bottom-button" title="Rolar para baixo" class="hidden opacity-0">
+                         <i data-lucide="arrow-down" class="w-5 h-5"></i>
+                     </button>
+                </main>
 
-            <!-- Área de Input -->
-            <footer class="w-full p-4 md:p-6 lg:p-8 bg-gradient-to-t from-slate-200/50 dark:from-slate-900/50 to-transparent">
-                <div class="max-w-3xl mx-auto">
-                    <!-- Input de arquivo oculto para imagens -->
-                    <input type="file" id="image-upload" accept="image/*" class="hidden">
+                <footer class="w-full p-4 md:p-6 lg:p-8 bg-gradient-to-t from-slate-200/50 dark:from-slate-900/50 to-transparent flex-shrink-0">
+                    <div class="max-w-3xl mx-auto">
+                        <input type="file" id="image-upload-input" accept="image/*" class="hidden">
+                        <input type="file" id="video-upload-input" accept="video/*" class="hidden">
 
-                    <form id="chat-form" class="relative">
-                        <div class="flex items-center bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-2 border border-slate-200 dark:border-slate-700">
-                            <!-- Botão de Anexo (Imagem) -->
-                            <button type="button" id="attach-image-button" class="p-3 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                                <i data-lucide="image" class="w-5 h-5"></i>
-                            </button>
-                            <!-- Botão de Gravar (Áudio) -->
-                            <button type="button" id="record-audio-button" class="p-3 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                                <i data-lucide="mic" class="w-5 h-5"></i>
-                            </button>
-
-                            <!-- Input de Texto -->
-                            <input type="text" id="chat-input" placeholder="Envie uma mensagem..." class="flex-1 px-4 py-3 bg-transparent text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none resize-none">
-
-                            <!-- Botão de Enviar -->
-                            <button type="submit" id="send-button" class="p-3 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:bg-slate-300 dark:disabled:bg-slate-600">
-                                <i data-lucide="arrow-up" class="w-5 h-5"></i>
+                        <!-- **NOVO:** Container do Preview -->
+                        <div id="upload-preview-container" class="hidden">
+                            <div id="upload-preview" class="flex items-center overflow-hidden">
+                                <!-- Img/Video/Icon + Span (filename) serão inseridos aqui -->
+                            </div>
+                            <button id="cancel-upload-button" type="button" title="Cancelar envio">
+                                <i data-lucide="x" class="w-4 h-4"></i>
                             </button>
                         </div>
-                    </form>
-                    <p class="text-xs text-center text-slate-500 dark:text-slate-400 mt-3">
-                        M Assistente pode cometer erros. Verifique informações importantes.
-                    </p>
-                </div>
-            </footer>
+
+                        <form id="chat-form" class="relative">
+                            <div id="attachment-menu" class="absolute bottom-full left-0 mb-2 w-48 bg-white dark:bg-slate-700 rounded-lg shadow-xl border border-slate-200 dark:border-slate-600 p-2 opacity-0 transform scale-95 -translate-y-2 hidden attachment-menu"> <button type="button" id="attach-image-button" class="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-slate-600"> <i data-lucide="image" class="w-4 h-4 text-blue-500"></i> Enviar Imagem </button> <button type="button" id="attach-video-button" class="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-slate-100 dark:hover:bg-slate-600"> <i data-lucide="video" class="w-4 h-4 text-green-500"></i> Enviar Vídeo </button> </div>
+                            <div class="flex items-end bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-2 border border-slate-200 dark:border-slate-700">
+                                <button type="button" id="toggle-attachment-button" class="p-3 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors self-end"> <i data-lucide="paperclip" class="w-5 h-5"></i> </button>
+                                <button type="button" id="record-audio-button" class="p-3 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors self-end flex items-center">
+                                    <i data-lucide="mic" class="w-5 h-5"></i>
+                                    <span id="recording-timer" class="hidden">00:00</span>
+                                </button>
+                                <textarea id="chat-input" placeholder="Envie uma mensagem..." class="flex-1 px-4 py-3 bg-transparent text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none resize-none custom-scrollbar" rows="1"></textarea>
+                                <button type="submit" id="send-button" class="p-3 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:bg-slate-300 dark:disabled:bg-slate-600 self-end"> <i data-lucide="arrow-up" class="w-5 h-5"></i> </button>
+                            </div>
+                        </form>
+                        <p class="text-xs text-center text-slate-500 dark:text-slate-400 mt-3"> M Assistente pode cometer erros. Verifique informações importantes. </p>
+                    </div>
+                </footer>
+            </div>
         </div>
     </div>
 
+    <div id="modal-backdrop" class="fixed inset-0 bg-slate-900/50 dark:bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 hidden p-4">
+         <div id="modal-content" class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center"> <h3 id="modal-title" class="text-lg font-bold mb-2">Confirmar Ação</h3> <p id="modal-message" class="text-sm text-slate-600 dark:text-slate-300 mb-6">Você tem certeza?</p> <div class="flex justify-center gap-4"> <button id="modal-cancel-button" class="w-full px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded-lg font-semibold transition-colors"> Cancelar </button> <button id="modal-confirm-button" class="w-full px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg font-semibold transition-colors"> Confirmar </button> </div> </div>
+    </div>
+
+    <div id="toast-container"></div>
+
     <script type="module">
-        // Configuração do Supabase (Corrigido para tnxmedia)
-        const SUPABASE_URL = 'https://qedstcloovfgeblduykc.supabase.co'; 
+        // Configurações Supabase e n8n
+        const SUPABASE_URL = 'https://qedstcloovfgeblduykc.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlZHN0Y2xvb3ZmZ2VibGR1eWtjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMzk2MzQsImV4cCI6MjA3MDcxNTYzNH0.tq76Qk9pqwb1OutsLX79KgrQhIB8q2ekAcczwhHsxtU';
-        
-        // Configuração do n8n Webhook
+        const SUPABASE_MEDIA_BUCKET = 'm_assistente_media';
         const N8N_WEBHOOK_URL = 'https://n8n.tnxmedia.pro/webhook/70ff3726-77f4-4425-9c46-c7cb746431c7';
         const N8N_WEBHOOK_SECRET = '2C5z7EpRHv3RH4M';
 
-        // Inicializa o cliente Supabase
         const { createClient } = supabase;
         const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Referências de UI
+        // --- Referências de UI ---
         const app = document.getElementById('app');
         const initialLoadingView = document.getElementById('initial-loading');
         const authView = document.getElementById('auth-view');
         const chatView = document.getElementById('chat-view');
-        
         const loginForm = document.getElementById('login-form');
         const registerForm = document.getElementById('register-form');
         const showRegisterLink = document.getElementById('show-register');
         const showLoginLink = document.getElementById('show-login');
         const authMessage = document.getElementById('auth-message');
         const authDescription = document.getElementById('auth-description');
-
-        const chatMessages = document.getElementById('chat-messages');
+        const chatMessagesContainer = document.getElementById('chat-messages');
+        const chatMessagesContent = chatMessagesContainer.querySelector('.max-w-3xl');
+        const welcomeMessage = document.getElementById('welcome-message');
         const chatForm = document.getElementById('chat-form');
         const chatInput = document.getElementById('chat-input');
         const sendButton = document.getElementById('send-button');
         const logoutButton = document.getElementById('logout-button');
         const userEmailSpan = document.getElementById('user-email');
-
+        const deleteConversationButton = document.getElementById('delete-conversation-button');
         const recordAudioButton = document.getElementById('record-audio-button');
+        const recordingTimerSpan = document.getElementById('recording-timer');
+        const imageUploadInput = document.getElementById('image-upload-input');
+        const videoUploadInput = document.getElementById('video-upload-input');
+        const toggleAttachmentButton = document.getElementById('toggle-attachment-button');
+        const attachmentMenu = document.getElementById('attachment-menu');
         const attachImageButton = document.getElementById('attach-image-button');
-        
-        // Referência para o input de imagem oculto
-        const imageUploadInput = document.getElementById('image-upload');
-        
-        // Variáveis para gravação de áudio
+        const attachVideoButton = document.getElementById('attach-video-button');
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalCancelButton = document.getElementById('modal-cancel-button');
+        const modalConfirmButton = document.getElementById('modal-confirm-button');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const toggleSidebarButton = document.getElementById('toggle-sidebar-button');
+        const conversationHistory = document.getElementById('conversation-history');
+        const searchInput = document.getElementById('search-input'); // **NOVO**
+        const newChatButton = document.getElementById('new-chat-button');
+        const themeToggleButton = document.getElementById('theme-toggle-button');
+        const toastContainer = document.getElementById('toast-container');
+        const scrollToBottomButton = document.getElementById('scroll-to-bottom-button');
+        const historySkeleton = document.getElementById('history-skeleton');
+        const uploadPreviewContainer = document.getElementById('upload-preview-container'); // **NOVO**
+        const uploadPreview = document.getElementById('upload-preview'); // **NOVO**
+        const cancelUploadButton = document.getElementById('cancel-upload-button'); // **NOVO**
+
+
+        // --- Estado da Aplicação ---
         let isRecording = false;
-        let mediaRecorder;
-        let audioChunks = [];
+        let mediaRecorder; let audioChunks = []; let recordingInterval = null; let recordingStartTime = null;
+        let currentUser = null; let conversations = []; let activeConversationId = null; // Alterado de activeSessionId
+        let modalConfirmCallback = null;
+        const SCROLL_THRESHOLD = 300;
+        let fileToUpload = null; // **NOVO:** Para armazenar o arquivo do preview
+        let fileTypeToUpload = null; // **NOVO:** 'image' ou 'video'
 
-        let currentUser = null;
-        let messageHistory = [];
+        // --- Funções do Modal ---
+        function showConfirmModal(title, message, confirmText = 'Confirmar', onConfirm) {
+            modalTitle.textContent = title; modalMessage.textContent = message; modalConfirmButton.textContent = confirmText; modalConfirmButton.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'bg-red-600', 'hover:bg-red-700'); modalConfirmButton.classList.add('bg-red-600', 'hover:bg-red-700'); modalConfirmCallback = onConfirm; modalBackdrop.classList.remove('hidden');
+        }
+        function closeModal() {
+             modalBackdrop.classList.add('hidden'); modalConfirmCallback = null;
+        }
 
-        /**
-         * Mostra uma mensagem na tela de autenticação.
-         * @param {string} message - A mensagem a ser exibida.
-         * @param {'success' | 'error'} type - O tipo de mensagem.
-         */
+        // --- Funções de Autenticação ---
         function showAuthMessage(message, type = 'error') {
-            authMessage.textContent = message;
-            authMessage.className = type === 'error' 
-                ? 'block p-3 rounded-lg mb-4 text-sm bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300' 
-                : 'block p-3 rounded-lg mb-4 text-sm bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300';
-        }
-
-        /**
-         * Alterna entre as telas de Login e Registro.
-         * @param {'login' | 'register'} view - A tela para exibir.
-         */
+             authMessage.textContent = message; authMessage.className = type === 'error' ? 'block p-3 rounded-lg mb-4 text-sm bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300' : 'block p-3 rounded-lg mb-4 text-sm bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300';
+         }
         function toggleAuthView(view) {
-            authMessage.className = 'hidden'; // Esconde mensagem
-            if (view === 'login') {
-                loginForm.classList.remove('hidden');
-                registerForm.classList.add('hidden');
-                authDescription.textContent = 'Faça login para continuar';
-            } else {
-                loginForm.classList.add('hidden');
-                registerForm.classList.remove('hidden');
-                authDescription.textContent = 'Crie sua conta para começar';
-            }
-        }
-
-        /**
-         * Lida com o envio do formulário de Login.
-         */
+            authMessage.className = 'hidden'; if (view === 'login') { loginForm.classList.remove('hidden'); registerForm.classList.add('hidden'); authDescription.textContent = 'Faça login para continuar'; } else { loginForm.classList.add('hidden'); registerForm.classList.remove('hidden'); authDescription.textContent = 'Crie sua conta para começar'; }
+         }
         async function handleLogin(e) {
-            e.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            const button = document.getElementById('login-button');
-            button.disabled = true;
-            button.innerHTML = '<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
-
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-
-            if (error) {
-                showAuthMessage(error.message, 'error');
-            } else if (data.user) {
-                // Login bem-sucedido, a transição será tratada pelo onAuthStateChange
-            }
-
-            button.disabled = false;
-            button.innerHTML = 'Entrar';
-        }
-
-        /**
-         * Lida com o envio do formulário de Registro.
-         */
+             e.preventDefault(); const button = document.getElementById('login-button'); button.disabled = true; button.innerHTML = '<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>'; const { error } = await supabaseClient.auth.signInWithPassword({ email: document.getElementById('login-email').value, password: document.getElementById('login-password').value }); if (error) showAuthMessage(error.message, 'error'); button.disabled = false; button.innerHTML = 'Entrar';
+         }
         async function handleRegister(e) {
-            e.preventDefault();
-            const email = document.getElementById('reg-email').value;
-            const password = document.getElementById('reg-password').value;
-            const fullName = document.getElementById('reg-fullname').value;
-            const birthDate = document.getElementById('reg-birthdate').value;
-            const cpf = document.getElementById('reg-cpf').value;
-            const companyName = document.getElementById('reg-company-name').value;
-            const companyPosition = document.getElementById('reg-company-position').value;
-            
-            const button = document.getElementById('register-button');
-            button.disabled = true;
-            button.innerHTML = '<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
-
-            // 1. Criar o usuário no Supabase Auth
-            const { data: authData, error: authError } = await supabaseClient.auth.signUp({
-                email,
-                password,
-            });
-
-            if (authError) {
-                showAuthMessage(authError.message, 'error');
-                button.disabled = false;
-                button.innerHTML = 'Criar Conta';
-                return;
-            }
-
-            if (!authData.user) {
-                 showAuthMessage('Erro ao criar usuário, tente novamente.', 'error');
-                button.disabled = false;
-                button.innerHTML = 'Criar Conta';
-                return;
-            }
-            
-            // 2. Inserir os dados na tabela public.m_assistente_profiles
-            //    Usando o ID do usuário recém-criado
+            // **IMPORTANTE: Usa a nova tabela 'profiles'**
+            e.preventDefault(); const button = document.getElementById('register-button'); button.disabled = true; button.innerHTML = '<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>'; const email = document.getElementById('reg-email').value; const { data: authData, error: authError } = await supabaseClient.auth.signUp({ email: email, password: document.getElementById('reg-password').value }); if (authError) { showAuthMessage(authError.message, 'error'); button.disabled = false; button.innerHTML = 'Criar Conta'; return; } if (!authData.user) { showAuthMessage('Erro ao criar usuário.', 'error'); button.disabled = false; button.innerHTML = 'Criar Conta'; return; }
+            // Insere na nova tabela 'profiles'
             const { error: profileError } = await supabaseClient
-                .from('m_assistente_profiles')
+                .from('profiles') // <--- Tabela nova
                 .insert({
-                    id: authData.user.id, // Vincula o ID do Auth ao ID do perfil
+                    id: authData.user.id, // ID do Auth vira PK aqui
                     email: email,
-                    full_name: fullName || null,
-                    birth_date: birthDate || null,
-                    cpf: cpf || null,
-                    company_name: companyName || null,
-                    company_position: companyPosition || null,
-                    // address, plan, etc., usarão os defaults da tabela
+                    full_name: document.getElementById('reg-fullname').value || null,
+                    // Mantenha os outros campos se os adicionou ao SQL
+                    // birth_date: document.getElementById('reg-birthdate').value || null,
+                    // cpf: document.getElementById('reg-cpf').value || null,
+                    // company_name: document.getElementById('reg-company-name').value || null,
+                    // company_position: document.getElementById('reg-company-position').value || null,
                 });
+             if (profileError) { showAuthMessage(`Erro perfil: ${profileError.message}.`, 'error'); } else { showAuthMessage('Conta criada! Verifique seu email.', 'success'); toggleAuthView('login'); } button.disabled = false; button.innerHTML = 'Criar Conta';
+        }
+        async function handleLogout() {
+             await supabaseClient.auth.signOut();
+        }
 
-            if (profileError) {
-                // Se der erro aqui, o usuário foi criado no Auth mas não no profiles
-                // Idealmente, deveríamos deletar o usuário do Auth ou tentar de novo
-                showAuthMessage(`Erro ao criar perfil: ${profileError.message}. Tente fazer login.`, 'error');
-                button.disabled = false;
-                button.innerHTML = 'Criar Conta';
+        // --- Funções da Sidebar ---
+        function toggleSidebar() {
+            sidebar.classList.toggle('-translate-x-full'); sidebarOverlay.classList.toggle('hidden');
+        }
+        function clearChatMessagesUI() {
+            const dynamicMessages = chatMessagesContent.querySelectorAll('.chat-message-user, .chat-message-ai, .chat-message-system'); dynamicMessages.forEach(msg => { if (msg.id !== 'welcome-message') msg.remove(); }); welcomeMessage.classList.remove('hidden');
+            // Limpa preview de upload ao limpar chat
+            hideUploadPreview();
+        }
+        function handleNewChat() {
+            activeConversationId = null;
+            clearChatMessagesUI();
+            document.querySelectorAll('#conversation-history .conversation-button').forEach(btn => btn.classList.remove('active'));
+            searchInput.value = ''; // Limpa busca
+            filterConversations(); // Mostra todas
+            chatInput.focus();
+            if (window.innerWidth < 768) toggleSidebar();
+        }
+
+        // **ALTERADO:** Lógica de renomear apenas loga por enquanto
+        function handleRenameConversation(event, conversationId, currentTitle) {
+            event.stopPropagation(); // Impede que o clique carregue a conversa
+            console.log("Renomear conversa ID:", conversationId, "Título atual:", currentTitle);
+            showToast("Função Renomear ainda não implementada.", "info");
+            // const newTitle = prompt("Digite o novo título:", currentTitle);
+            // if (newTitle && newTitle.trim() !== '' && newTitle !== currentTitle) {
+            //     // Lógica para atualizar no Supabase e na UI virá aqui
+            // }
+        }
+
+        function renderConversations(filteredConversations = conversations) {
+            conversationHistory.innerHTML = '';
+            if (filteredConversations.length === 0 && conversations.length > 0) {
+                 conversationHistory.innerHTML = '<p class="text-sm text-slate-400 p-2 text-center">Nenhuma conversa encontrada na busca.</p>';
+            } else if (conversations.length === 0) {
+                conversationHistory.innerHTML = '<p class="text-sm text-slate-400 p-2 text-center">Nenhuma conversa ainda.</p>';
+            } else {
+                filteredConversations.forEach(convo => {
+                    const convoEl = document.createElement('button');
+                    convoEl.className = `conversation-button w-full flex items-center justify-between gap-2 px-3 py-2 text-sm rounded-md text-left text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors truncate ${convo.id === activeConversationId ? 'active' : ''}`;
+                    convoEl.dataset.id = convo.id;
+                    convoEl.onclick = () => handleLoadConversation(convo.id);
+
+                    const titleSpan = document.createElement('span');
+                    titleSpan.className = 'truncate flex-1';
+                    titleSpan.textContent = convo.title || 'Nova Conversa';
+                    titleSpan.title = convo.title || 'Nova Conversa';
+
+                    const editButton = document.createElement('span'); // Span para não agir como botão real ainda
+                    editButton.className = 'edit-convo-button p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-500 opacity-0 group-hover:opacity-100 transition-opacity';
+                    editButton.innerHTML = '<i data-lucide="edit-3" class="w-3 h-3 text-slate-500 dark:text-slate-400"></i>';
+                    editButton.onclick = (e) => handleRenameConversation(e, convo.id, convo.title);
+
+                    convoEl.appendChild(titleSpan);
+                    convoEl.appendChild(editButton);
+                    conversationHistory.appendChild(convoEl);
+                });
+                lucide.createIcons(); // Renderiza ícone de editar
+            }
+        }
+        function filterConversations() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            if (!searchTerm) {
+                renderConversations(conversations); // Mostra todas
                 return;
             }
-
-            // Sucesso!
-            showAuthMessage('Conta criada! Por favor, verifique seu email para confirmar e depois faça login.', 'success');
-            toggleAuthView('login');
-            button.disabled = false;
-            button.innerHTML = 'Criar Conta';
+            const filtered = conversations.filter(convo =>
+                (convo.title || 'Nova Conversa').toLowerCase().includes(searchTerm)
+            );
+            renderConversations(filtered);
         }
+        async function loadConversations(userId) {
+            historySkeleton.classList.remove('hidden');
+            conversationHistory.innerHTML = ''; conversationHistory.appendChild(historySkeleton);
 
-        /**
-         * Lida com o Logout do usuário.
-         */
-        async function handleLogout() {
-            const { error } = await supabaseClient.auth.signOut();
+            // **Usa a função RPC atualizada**
+            const { data, error } = await supabaseClient.rpc('get_user_conversations');
+
+            historySkeleton.classList.add('hidden'); // Esconde skeleton
+
             if (error) {
-                console.error('Erro ao sair:', error.message);
+                console.error("Erro RPC get_user_conversations:", error);
+                conversationHistory.innerHTML = `<p class="text-sm text-red-400 p-2">Erro: ${error.message}.</p>`;
+                return;
             }
-            // A transição será tratada pelo onAuthStateChange
+            conversations = data || []; // Garante que seja um array
+            filterConversations(); // Renderiza usando o filtro (que pode estar vazio)
+        }
+        function handleLoadConversation(conversationId) { // Renomeado de sessionId
+             if (activeConversationId === conversationId) return;
+             activeConversationId = conversationId;
+             loadChatHistory(conversationId); // Usa o novo ID
+             document.querySelectorAll('#conversation-history .conversation-button').forEach(btn => {
+                 btn.classList.toggle('active', btn.dataset.id === conversationId)
+             });
+             searchInput.value = ''; // Limpa busca ao carregar
+             filterConversations(); // Mostra todas novamente
+             if (window.innerWidth < 768) toggleSidebar();
         }
 
-        /**
-         * Adiciona uma mensagem à interface de chat.
-         * @param {'user' | 'ai' | 'system'} role - Quem enviou a mensagem.
-         * @param {string} content - O conteúdo da mensagem (pode ser HTML).
-         */
-        function addMessageToChat(role, content) {
+        // --- Funções de Chat ---
+        function escapeHTML(text) { if (!text) return ''; const p = document.createElement('p'); p.textContent = text; return p.innerHTML; }
+        function parseMarkdown(text) { if (!text) return ''; marked.use({ pedantic: false, gfm: true, breaks: true, sanitize: false, smartypants: true }); return marked.parse(text); }
+        function showToast(message, type = 'info', duration = 3000) { /* ... (sem mudanças) ... */ const toast = document.createElement('div'); toast.className = `toast toast-${type}`; let icon = 'info'; if (type === 'success') icon = 'check-circle'; if (type === 'error') icon = 'alert-circle'; if (type === 'warning') icon = 'alert-triangle'; toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i><span>${escapeHTML(message)}</span>`; toastContainer.appendChild(toast); lucide.createIcons(); setTimeout(() => { toast.classList.add('toast-out'); toast.addEventListener('animationend', () => toast.remove()); }, duration); }
+        function copyTextToClipboard(text, buttonElement, feedbackText = 'Copiado!', originalText = 'Copiar') { /* ... (sem mudanças) ... */ const textarea = document.createElement('textarea'); textarea.value = text; document.body.appendChild(textarea); textarea.select(); try { document.execCommand('copy'); const isIconButton = buttonElement.querySelector('i, svg'); if (isIconButton) { buttonElement.title = feedbackText; } else { buttonElement.textContent = feedbackText; } buttonElement.classList.add('copied'); if (buttonElement.classList.contains('copy-text-button')) { buttonElement.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i>'; lucide.createIcons(); } setTimeout(() => { if (isIconButton) { buttonElement.title = originalText; } else { buttonElement.textContent = originalText; } buttonElement.classList.remove('copied'); if (buttonElement.classList.contains('copy-text-button')) { buttonElement.innerHTML = '<i data-lucide="copy" class="w-4 h-4"></i>'; lucide.createIcons(); } }, 1500); } catch (err) { console.error('Erro ao copiar:', err); showToast('Erro ao copiar texto.', 'error'); if (!buttonElement.querySelector('i, svg')) { buttonElement.textContent = 'Erro'; } } document.body.removeChild(textarea); }
+        function addCopyButtonsToCodeBlocks(parentElement) { /* ... (sem mudanças) ... */ const codeBlocks = parentElement.querySelectorAll('pre'); codeBlocks.forEach(pre => { if (pre.querySelector('.copy-code-button')) return; const codeElement = pre.querySelector('code'); const codeText = codeElement ? codeElement.innerText : pre.innerText; const button = document.createElement('button'); button.textContent = 'Copiar'; button.className = 'copy-code-button'; button.onclick = () => copyTextToClipboard(codeText, button, 'Copiado!', 'Copiar'); pre.appendChild(button); }); }
+        function addCopyTextButton(aiMessageElement) { /* ... (sem mudanças) ... */ const messageBubble = aiMessageElement.querySelector('.group'); if (!messageBubble) return; const contentDiv = messageBubble.querySelector('.markdown-content'); if (!contentDiv) return; let actionsContainer = messageBubble.querySelector('.message-actions'); if (!actionsContainer) { actionsContainer = document.createElement('div'); actionsContainer.className = 'message-actions'; messageBubble.appendChild(actionsContainer); } if (actionsContainer.querySelector('.copy-text-button')) return; const button = document.createElement('button'); button.className = 'copy-button copy-text-button'; button.title = 'Copiar texto'; button.innerHTML = '<i data-lucide="copy" class="w-4 h-4"></i>'; button.onclick = (e) => { e.stopPropagation(); const textToCopy = contentDiv.innerText || contentDiv.textContent; copyTextToClipboard(textToCopy, button, 'Copiado!', 'Copiar Texto'); }; actionsContainer.appendChild(button); lucide.createIcons(); }
+
+         function addMessageToChat(messageData) {
+            const { role, content, media_url, media_type } = messageData;
+            const wasNearBottom = chatMessagesContainer.scrollHeight - chatMessagesContainer.scrollTop - chatMessagesContainer.clientHeight < SCROLL_THRESHOLD;
+            welcomeMessage.classList.add('hidden');
             const messageEl = document.createElement('div');
-            
+            let messageHTML = '';
+
+            if (media_url && media_type) {
+                 switch (media_type) { case 'image': messageHTML = `<img src="${media_url}" class="max-w-xs rounded-lg" alt="Imagem enviada">`; break; case 'video': messageHTML = `<video controls src="${media_url}" class="max-w-xs rounded-lg"></video>`; break; case 'audio': messageHTML = `<audio controls src="${media_url}"></audio>`; break; default: messageHTML = `<a href="${media_url}" target="_blank" class="text-blue-500 hover:underline">[Mídia Desconhecida]</a>`;}
+             } else if (content && role === 'ai') {
+                 messageHTML = `<div class="markdown-content">${parseMarkdown(content)}</div>`;
+            } else if (content) {
+                 messageHTML = `<p>${escapeHTML(content)}</p>`;
+            }
+
             if (role === 'user') {
                 messageEl.className = 'chat-message-user';
-                messageEl.innerHTML = `
-                    <div class="flex items-start gap-3 justify-end">
-                        <div class="bg-blue-600 text-white rounded-xl p-4 shadow-sm max-w-[80%]">
-                            <p>${content}</p>
-                        </div>
-                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-slate-300 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-300 font-semibold text-sm">
-                            <i data-lucide="user" class="w-5 h-5"></i>
-                        </div>
-                    </div>
-                `;
+                messageEl.innerHTML = `<div class="flex items-start gap-3 justify-end"><div class="bg-blue-600 text-white rounded-xl p-4 shadow-sm max-w-[80%]">${messageHTML || '<p class="italic text-slate-300">[Mídia]</p>'}</div><div class="flex-shrink-0 w-8 h-8 rounded-full bg-slate-300 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-300 font-semibold text-sm"><i data-lucide="user" class="w-5 h-5"></i></div></div>`;
             } else if (role === 'ai') {
                 messageEl.className = 'chat-message-ai';
-                messageEl.innerHTML = `
-                    <div class="flex items-start gap-3">
-                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm">M</div>
-                        <div class="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm max-w-[80%]">
-                            <p class="font-semibold mb-1">M Assistente</p>
-                            <div>${content}</div>
-                        </div>
-                    </div>
-                `;
-            } else { // system
+                messageEl.innerHTML = `<div class="flex items-start gap-3"><div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm">M</div><div class="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm max-w-[80%] relative group"><p class="font-semibold mb-2">M Assistente</p>${messageHTML || '<p class="italic text-slate-500">[Resposta Vazia]</p>'}</div></div>`;
+            } else { // System messages like errors
                 messageEl.className = 'chat-message-system text-center';
-                messageEl.innerHTML = `
-                    <p class="text-sm text-red-500 dark:text-red-400 italic p-2 bg-red-100 dark:bg-red-900/50 rounded-lg">${content}</p>
-                `;
+                messageEl.innerHTML = `<p class="text-sm text-red-500 dark:text-red-400 italic p-2 bg-red-100 dark:bg-red-900/50 rounded-lg max-w-[80%] mx-auto">${escapeHTML(content)}</p>`;
             }
 
-            chatMessages.appendChild(messageEl);
-            // Renderiza ícones do Lucide que acabaram de ser adicionados
+            chatMessagesContent.appendChild(messageEl);
             lucide.createIcons();
-            // Rola para a nova mensagem
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
+            if (role === 'ai') {
+                 const markdownContentDiv = messageEl.querySelector('.markdown-content');
+                 if(markdownContentDiv) addCopyButtonsToCodeBlocks(markdownContentDiv);
+                 addCopyTextButton(messageEl);
+            }
 
-        /**
-         * Mostra o indicador de "digitando..."
-         */
-        function showLoadingIndicator() {
-            const loadingEl = document.createElement('div');
-            loadingEl.id = 'loading-indicator';
-            loadingEl.className = 'chat-message-ai';
-            loadingEl.innerHTML = `
-                <div class="flex items-start gap-3">
-                    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm">M</div>
-                    <div class="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm">
-                        <div class="loading-dots flex space-x-1">
-                            <span class="w-2 h-2 bg-slate-400 rounded-full"></span>
-                            <span class="w-2 h-2 bg-slate-400 rounded-full"></span>
-                            <span class="w-2 h-2 bg-slate-400 rounded-full"></span>
-                        </div>
-                    </div>
-                </div>
-            `;
-            chatMessages.appendChild(loadingEl);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        /**
-         * Remove o indicador de "digitando..."
-         */
-        function hideLoadingIndicator() {
-            const loadingEl = document.getElementById('loading-indicator');
-            if (loadingEl) {
-                loadingEl.remove();
+            if (wasNearBottom) {
+                chatMessagesContainer.scrollTo({ top: chatMessagesContainer.scrollHeight, behavior: 'smooth' });
             }
         }
-        
-        /**
-         * Lida com o envio de uma mensagem de texto.
-         */
+
+
+        function showLoadingIndicator() {
+             const wasNearBottom = chatMessagesContainer.scrollHeight - chatMessagesContainer.scrollTop - chatMessagesContainer.clientHeight < SCROLL_THRESHOLD;
+             welcomeMessage.classList.add('hidden');
+             // Remove indicador existente, se houver
+             const existingIndicator = document.getElementById('loading-indicator');
+             if (existingIndicator) existingIndicator.remove();
+
+             const loadingEl = document.createElement('div');
+             loadingEl.id = 'loading-indicator';
+             loadingEl.className = 'chat-message-ai';
+             loadingEl.innerHTML = `<div class="flex items-start gap-3"><div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm">M</div><div class="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm"><div class="loading-dots flex space-x-1"><span class="w-2 h-2 bg-slate-400 rounded-full"></span><span class="w-2 h-2 bg-slate-400 rounded-full"></span><span class="w-2 h-2 bg-slate-400 rounded-full"></span></div></div></div>`;
+             chatMessagesContent.appendChild(loadingEl);
+             if (wasNearBottom) {
+                 chatMessagesContainer.scrollTo({ top: chatMessagesContainer.scrollHeight, behavior: 'smooth' });
+             }
+         }
+        function hideLoadingIndicator() { const loadingEl = document.getElementById('loading-indicator'); if (loadingEl) loadingEl.remove(); }
+
+        // **ALTERADO:** Lida com texto OU mídia do preview
         async function handleSendMessage(e) {
-            e.preventDefault();
+            if (e) e.preventDefault();
             const text = chatInput.value.trim();
+
+            // Verifica se há um arquivo no preview para enviar
+            if (fileToUpload && fileTypeToUpload) {
+                const fileToSend = fileToUpload;
+                const typeToSend = fileTypeToUpload;
+                hideUploadPreview(); // Limpa preview e estado
+                try {
+                    showToast(`Enviando ${typeToSend}...`, 'info', 2000);
+                    const publicUrl = await uploadFileToSupabase(fileToSend, typeToSend);
+                    sendMediaMessage(publicUrl, typeToSend); // Chama a função de mídia
+                } catch (uploadError) {
+                    showToast(`Erro upload ${typeToSend}: ${uploadError.message}`, 'error');
+                }
+                return; // Encerra aqui se enviou mídia
+            }
+
+            // Se não há mídia no preview, envia o texto (se houver)
             if (!text || !currentUser) return;
 
-            // Limpa o input e desabilita o botão
-            chatInput.value = '';
-            sendButton.disabled = true;
-            
-            // Adiciona a mensagem do usuário à UI
-            addMessageToChat('user', text);
-            // Mostra o loading
-            showLoadingIndicator();
+            chatInput.value = ''; resetTextareaHeight(); sendButton.disabled = true;
 
-            try {
-                // Envia a mensagem para o webhook n8n
-                const response = await fetch(N8N_WEBHOOK_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'webapp-secret': N8N_WEBHOOK_SECRET
-                    },
-                    // Payload padronizado
-                    body: JSON.stringify({
-                        userId: currentUser.id, // Envia o ID de usuário do Supabase
-                        message: text,
-                        messageType: "text" // Tipo padronizado
-                    })
-                });
-                
-                hideLoadingIndicator();
+            let currentConversationId = activeConversationId;
+            const isNewChat = !currentConversationId;
 
-                if (!response.ok) {
-                    throw new Error(`Erro do servidor n8n: ${response.status} ${response.statusText}`);
+            // **NOVO:** Cria conversa no DB ANTES de inserir a primeira mensagem
+            if (isNewChat) {
+                const newTitle = text.substring(0, 50) + (text.length > 50 ? '...' : '');
+                const { data: convData, error: convError } = await supabaseClient
+                    .from('conversations')
+                    .insert({ user_id: currentUser.id, title: newTitle })
+                    .select('id')
+                    .single();
+
+                if (convError || !convData) {
+                    showToast(`Erro ao criar conversa: ${convError?.message || 'ID não retornado.'}`, 'error');
+                    sendButton.disabled = false; return;
                 }
+                currentConversationId = convData.id;
+                activeConversationId = currentConversationId;
+                // Adiciona na UI e recarrega a lista
+                conversations.unshift({ id: activeConversationId, title: newTitle, created_at: new Date().toISOString() });
+                filterConversations(); // Renderiza com filtro (atualiza a lista)
+            }
 
-                const aiResponse = await response.text();
-                addMessageToChat('ai', aiResponse);
+            // **Usa a nova tabela 'messages'**
+            const userMessageData = {
+                conversation_id: currentConversationId,
+                user_id: currentUser.id, // Adiciona user_id aqui também
+                role: 'user',
+                content: text
+            };
+            addMessageToChat(userMessageData); // Adiciona na UI
 
-            } catch (error) {
-                console.error('Erro ao enviar mensagem:', error);
+            const { error: insertError } = await supabaseClient
+                .from('messages') // <--- Tabela nova
+                .insert(userMessageData);
+
+            if (insertError) {
+                showToast(`Erro ao salvar sua mensagem: ${insertError.message}`, 'error');
+                sendButton.disabled = false; return;
+            }
+
+            showLoadingIndicator();
+            try {
+                const response = await fetch(N8N_WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'webapp-secret': N8N_WEBHOOK_SECRET }, body: JSON.stringify({ userId: currentUser.id, message: text, messageType: "text", conversationId: currentConversationId }) }); // Envia conversationId
                 hideLoadingIndicator();
-                addMessageToChat('system', `Erro ao conectar com o assistente: ${error.message}`);
+                if (!response.ok) throw new Error(`Erro n8n: ${response.status} ${response.statusText}`);
+                const aiResponseText = await response.text();
+
+                // **Usa a nova tabela 'messages'**
+                const aiMessageData = {
+                    conversation_id: currentConversationId,
+                    user_id: currentUser.id, // Adiciona user_id aqui também
+                    role: 'ai',
+                    content: aiResponseText
+                };
+                addMessageToChat(aiMessageData); // Adiciona na UI
+
+                const { error: insertAiError } = await supabaseClient
+                    .from('messages') // <--- Tabela nova
+                    .insert(aiMessageData);
+
+                if (insertAiError) showToast(`Erro ao salvar resposta da IA: ${insertAiError.message}`, 'error');
+            } catch (error) {
+                console.error('Erro ao enviar/receber do n8n:', error); hideLoadingIndicator();
+                showToast(`Erro ao conectar com assistente: ${error.message}`, 'error');
             } finally {
-                sendButton.disabled = false;
-                chatInput.focus();
+                sendButton.disabled = false; chatInput.focus();
             }
         }
 
-        /**
-         * Lida com o envio de mensagens de mídia (áudio ou imagem).
-         * @param {string} base64Data - A string Base64 do arquivo (data:mime/type;base64,...).
-         * @param {'audio' | 'image'} mediaType - O tipo de mídia.
-         */
-        async function sendMediaMessage(base64Data, mediaType) {
+        async function uploadFileToSupabase(file, mediaType) {
+             if (!currentUser) throw new Error("Usuário não autenticado.");
+             const fileExtension = file.name.split('.').pop();
+             const fileName = `${crypto.randomUUID()}.${fileExtension}`;
+             const filePath = `${currentUser.id}/${mediaType}/${fileName}`; // Estrutura: userId/mediaType/fileName
+
+             // Faz o upload para o bucket correto
+             const { error: uploadError } = await supabaseClient.storage
+                .from(SUPABASE_MEDIA_BUCKET)
+                .upload(filePath, file);
+
+             if (uploadError) {
+                console.error("Supabase Upload Error:", uploadError);
+                throw new Error(`Erro no upload: ${uploadError.message}`);
+             }
+
+             // Obtém a URL pública
+             const { data } = supabaseClient.storage
+                .from(SUPABASE_MEDIA_BUCKET)
+                .getPublicUrl(filePath);
+
+             if (!data || !data.publicUrl) {
+                throw new Error("Não foi possível obter a URL pública do arquivo.");
+             }
+             return data.publicUrl;
+         }
+
+        // **ALTERADO:** Lógica de envio de mídia
+        async function sendMediaMessage(mediaUrl, mediaType) {
             if (!currentUser) return;
 
-            // Adiciona uma pré-visualização da mídia à UI
-            if (mediaType === 'image') {
-                addMessageToChat('user', `<img src="${base64Data}" class="max-w-xs rounded-lg" alt="Imagem enviada">`);
-            } else {
-                addMessageToChat('user', `<audio controls src="${base64Data}"></audio>`);
-            }
-            
-            // Mostra o loading
-            showLoadingIndicator();
+            let currentConversationId = activeConversationId;
+            const isNewChat = !currentConversationId;
 
-            try {
-                // Envia a mídia em Base64 para o webhook n8n
-                const response = await fetch(N8N_WEBHOOK_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'webapp-secret': N8N_WEBHOOK_SECRET
-                    },
-                    body: JSON.stringify({
-                        userId: currentUser.id,
-                        base64Data: base64Data, // A string Base64
-                        messageType: mediaType // 'image' ou 'audio'
-                    })
-                });
-                
-                hideLoadingIndicator();
+             // Cria conversa ANTES se for nova
+            if (isNewChat) {
+                const newTitle = `Chat de Mídia (${mediaType})`;
+                const { data: convData, error: convError } = await supabaseClient
+                    .from('conversations')
+                    .insert({ user_id: currentUser.id, title: newTitle })
+                    .select('id')
+                    .single();
 
-                if (!response.ok) {
-                    throw new Error(`Erro do servidor n8n: ${response.status} ${response.statusText}`);
+                if (convError || !convData) {
+                    showToast(`Erro ao criar conversa: ${convError?.message || 'ID não retornado.'}`, 'error');
+                    return;
                 }
+                currentConversationId = convData.id;
+                activeConversationId = currentConversationId;
+                conversations.unshift({ id: activeConversationId, title: newTitle, created_at: new Date().toISOString() });
+                filterConversations(); // Renderiza e atualiza a lista
+            }
 
-                const aiResponse = await response.text();
-                // A resposta do n8n (transcrição ou análise) será tratada pelo 'M'
-                addMessageToChat('ai', aiResponse);
+            // **Usa a nova tabela 'messages'**
+            const userMessageData = {
+                conversation_id: currentConversationId,
+                user_id: currentUser.id,
+                role: 'user',
+                media_url: mediaUrl,
+                media_type: mediaType,
+                content: null // Sem texto para mídia
+            };
+            addMessageToChat(userMessageData); // Adiciona na UI
 
-            } catch (error) {
-                console.error('Erro ao enviar mídia:', error);
+            const { error: insertError } = await supabaseClient
+                .from('messages') // <--- Tabela nova
+                .insert(userMessageData);
+
+            if (insertError) {
+                showToast(`Erro ao salvar mídia: ${insertError.message}`, 'error');
+                return;
+            }
+
+            showLoadingIndicator();
+            try {
+                // Envia URL para o n8n
+                const response = await fetch(N8N_WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'webapp-secret': N8N_WEBHOOK_SECRET }, body: JSON.stringify({ userId: currentUser.id, mediaUrl: mediaUrl, messageType: mediaType, conversationId: currentConversationId }) }); // Envia conversationId
                 hideLoadingIndicator();
-                addMessageToChat('system', `Erro ao processar mídia: ${error.message}`);
+                if (!response.ok) throw new Error(`Erro n8n: ${response.status} ${response.statusText}`);
+                const aiResponseText = await response.text();
+
+                 // **Usa a nova tabela 'messages'**
+                const aiMessageData = {
+                    conversation_id: currentConversationId,
+                    user_id: currentUser.id,
+                    role: 'ai',
+                    content: aiResponseText,
+                    media_url: null,
+                    media_type: null
+                };
+                 addMessageToChat(aiMessageData); // Adiciona na UI
+
+                const { error: insertAiError } = await supabaseClient
+                    .from('messages') // <--- Tabela nova
+                    .insert(aiMessageData);
+
+                if (insertAiError) showToast(`Erro ao salvar resposta da IA: ${insertAiError.message}`, 'error');
+            } catch (error) {
+                console.error('Erro ao processar mídia via n8n:', error); hideLoadingIndicator();
+                 showToast(`Erro ao processar mídia: ${error.message}`, 'error');
             }
         }
 
-        /**
-         * Inicia ou para a gravação de áudio.
-         */
+        function formatTime(seconds) { const minutes = Math.floor(seconds / 60); const remainingSeconds = Math.floor(seconds % 60); return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`; }
         async function handleToggleRecording() {
-            const icon = recordAudioButton.querySelector('i');
-
+            const setIcon = (iconName) => { const currentIcon = recordAudioButton.querySelector('i[data-lucide], svg'); if (currentIcon) { if (currentIcon.tagName === 'I') { currentIcon.setAttribute('data-lucide', iconName); } else { currentIcon.remove(); recordAudioButton.insertAdjacentHTML('afterbegin', `<i data-lucide="${iconName}" class="w-5 h-5"></i>`); } lucide.createIcons(); } else { recordAudioButton.insertAdjacentHTML('afterbegin', `<i data-lucide="${iconName}" class="w-5 h-5"></i>`); lucide.createIcons(); } };
             if (isRecording) {
-                // Para a gravação
-                mediaRecorder.stop();
-                isRecording = false;
-                recordAudioButton.classList.remove('text-red-500', 'recording-pulse');
-                icon.outerHTML = '<i data-lucide="mic" class="w-5 h-5"></i>';
-                lucide.createIcons();
-                chatInput.disabled = false;
+                if (mediaRecorder && mediaRecorder.state !== "inactive") { mediaRecorder.stop(); clearInterval(recordingInterval); recordingTimerSpan.classList.add('hidden'); }
             } else {
-                // Começa a gravação
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' }); // Usamos webm
-                    audioChunks = []; // Reseta os pedaços
-
-                    mediaRecorder.ondataavailable = event => {
-                        audioChunks.push(event.data);
+                    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm'; // Prefere Opus
+                    mediaRecorder = new MediaRecorder(stream, { mimeType });
+                    audioChunks = []; mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
+                    mediaRecorder.onstop = async () => {
+                        const audioBlob = new Blob(audioChunks, { type: mimeType }); const audioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: mimeType }); stream.getTracks().forEach(track => track.stop());
+                        isRecording = false; recordAudioButton.classList.remove('text-red-500', 'recording-pulse'); setIcon('mic'); recordingTimerSpan.classList.add('hidden'); clearInterval(recordingInterval); chatInput.disabled = false;
+                        try {
+                            showToast('Enviando áudio...', 'info', 2000);
+                            const publicUrl = await uploadFileToSupabase(audioFile, 'audio');
+                            sendMediaMessage(publicUrl, 'audio');
+                        } catch (uploadError) {
+                            showToast(`Erro upload áudio: ${uploadError.message}`, 'error');
+                        }
                     };
-
-                    mediaRecorder.onstop = () => {
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                        const reader = new FileReader();
-                        reader.readAsDataURL(audioBlob);
-                        reader.onloadend = () => {
-                            const base64String = reader.result;
-                            sendMediaMessage(base64String, 'audio'); // Envia o áudio
-                        };
-                        // Libera o stream da câmera/microfone
-                        stream.getTracks().forEach(track => track.stop());
-                    };
-
-                    mediaRecorder.start();
-                    isRecording = true;
-                    recordAudioButton.classList.add('text-red-500', 'recording-pulse');
-                    icon.outerHTML = '<i data-lucide="stop-circle" class="w-5 h-5"></i>';
-                    lucide.createIcons();
-                    chatInput.disabled = true; // Desabilita input de texto
-                
+                    mediaRecorder.start(); isRecording = true; recordAudioButton.classList.add('text-red-500', 'recording-pulse'); setIcon('stop-circle');
+                    recordingStartTime = Date.now(); recordingTimerSpan.textContent = '00:00'; recordingTimerSpan.classList.remove('hidden'); recordingInterval = setInterval(() => { const elapsedSeconds = (Date.now() - recordingStartTime) / 1000; recordingTimerSpan.textContent = formatTime(elapsedSeconds); }, 1000);
+                    chatInput.disabled = true;
                 } catch (err) {
-                    console.error("Erro ao acessar microfone:", err);
-                    addMessageToChat('system', 'Não foi possível acessar seu microfone. Verifique as permissões do navegador.');
+                    console.error("Erro microfone:", err);
+                    showToast(`Erro microfone: ${err.message}`, 'error');
+                    isRecording = false; recordAudioButton.classList.remove('text-red-500', 'recording-pulse'); setIcon('mic'); recordingTimerSpan.classList.add('hidden'); clearInterval(recordingInterval); chatInput.disabled = false;
                 }
             }
         }
 
-        /**
-         * Lida com a seleção de imagem.
-         */
-        function handleImageUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+        // --- Funções de Upload e Preview ---
+        function showUploadPreview(file, type) {
+            fileToUpload = file;
+            fileTypeToUpload = type;
+            uploadPreview.innerHTML = ''; // Limpa preview anterior
 
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => {
-                const base64String = reader.result;
-                sendMediaMessage(base64String, 'image'); // Envia a imagem
-            };
-            reader.onerror = (error) => {
-                console.error("Erro ao ler arquivo:", error);
-                addMessageToChat('system', 'Erro ao processar a imagem.');
-            };
-            
-            // Limpa o valor do input para permitir selecionar o mesmo arquivo novamente
-            event.target.value = null;
+            let previewElement;
+            if (type === 'image') {
+                previewElement = document.createElement('img');
+                previewElement.src = URL.createObjectURL(file);
+                previewElement.onload = () => URL.revokeObjectURL(previewElement.src); // Libera memória
+            } else if (type === 'video') {
+                previewElement = document.createElement('video');
+                previewElement.src = URL.createObjectURL(file);
+                previewElement.onloadedmetadata = () => URL.revokeObjectURL(previewElement.src); // Libera memória
+                previewElement.muted = true; // Previne autoplay com som
+            } else { // Fallback para outros tipos (ou áudio)
+                previewElement = document.createElement('i');
+                previewElement.setAttribute('data-lucide', 'file');
+                previewElement.className = 'w-8 h-8 text-slate-500';
+            }
+
+            const fileNameSpan = document.createElement('span');
+            fileNameSpan.textContent = file.name;
+
+            uploadPreview.appendChild(previewElement);
+            uploadPreview.appendChild(fileNameSpan);
+            if(previewElement.tagName === 'I') lucide.createIcons(); // Renderiza ícone se for o caso
+
+            uploadPreviewContainer.classList.remove('hidden');
+            chatInput.disabled = true; // Desabilita texto enquanto preview ativo
+            chatInput.placeholder = `Envie ${type === 'image' ? 'a imagem' : 'o vídeo'} ou cancele...`;
         }
-        
-        /**
-         * Atualiza a UI com base no estado de autenticação.
-         */
-        function updateUserState(user) {
-            currentUser = user;
-            if (user) {
-                // Usuário está logado
-                initialLoadingView.classList.add('hidden');
-                authView.classList.add('hidden');
-                chatView.classList.remove('hidden');
-                userEmailSpan.textContent = user.email;
+
+        function hideUploadPreview() {
+            fileToUpload = null;
+            fileTypeToUpload = null;
+            uploadPreviewContainer.classList.add('hidden');
+            uploadPreview.innerHTML = '';
+            chatInput.disabled = false;
+            chatInput.placeholder = 'Envie uma mensagem...';
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0]; if (!file) return; event.target.value = null;
+            showUploadPreview(file, 'image');
+        }
+        function handleVideoUpload(event) {
+            const file = event.target.files[0]; if (!file) return; event.target.value = null;
+            if (file.size > 50 * 1024 * 1024) { showToast('Erro: Vídeo > 50MB.', 'error'); return; }
+            showUploadPreview(file, 'video');
+        }
+
+        // **ALTERADO:** Usa a nova tabela 'messages'
+        async function loadChatHistory(conversationId) {
+            clearChatMessagesUI(); if (!currentUser) return;
+            showToast('Carregando histórico...', 'info', 1500);
+
+            // **Usa a nova tabela 'messages' e filtra por 'conversation_id'**
+            const { data, error } = await supabaseClient
+                .from('messages') // <--- Tabela nova
+                .select('role, content, media_url, media_type, created_at')
+                .eq('user_id', currentUser.id) // Garante que só carregue do user logado
+                .eq('conversation_id', conversationId) // <--- Filtro novo
+                .order('created_at', { ascending: true });
+
+            if (error) {
+                showToast(`Erro ao carregar histórico: ${error.message}`, 'error');
+                return;
+            }
+
+            if(data && data.length > 0) {
+                 welcomeMessage.classList.add('hidden');
+                 data.forEach(message => addMessageToChat(message)); // Passa o objeto direto
             } else {
-                // Usuário não está logado
-                initialLoadingView.classList.add('hidden');
-                authView.classList.remove('hidden');
-                chatView.classList.add('hidden');
+                 welcomeMessage.classList.remove('hidden'); // Mostra bem-vindo se vazio
+            }
+            // Scroll para o fim após carregar
+            chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        }
+
+        // **ALTERADO:** Usa a nova tabela 'conversations'
+        async function handleDeleteConversation() {
+            closeModal(); if (!activeConversationId) { showToast('Não há conversa ativa para apagar.', 'info'); return; }
+            const conversationIdToDelete = activeConversationId;
+            showToast('Apagando conversa...', 'info', 2000);
+
+            // **Usa a nova tabela 'conversations' e deleta por 'id'**
+            // O CASCADE no SQL deve apagar as mensagens associadas
+            const { error } = await supabaseClient
+                .from('conversations') // <--- Tabela nova
+                .delete()
+                .eq('id', conversationIdToDelete)
+                .eq('user_id', currentUser.id); // Segurança extra
+
+            if (error) { showToast(`Erro ao apagar conversa: ${error.message}`, 'error'); return; }
+
+            conversations = conversations.filter(c => c.id !== conversationIdToDelete);
+            handleNewChat(); // Vai para nova conversa
+            filterConversations(); // Re-renderiza a lista filtrada
+            showToast('Conversa apagada.', 'success');
+        }
+
+        // --- Funções de UI (Textarea) ---
+        function autoResizeTextarea() { chatInput.style.height = 'auto'; const newHeight = Math.min(chatInput.scrollHeight, 150); chatInput.style.height = `${newHeight}px`; }
+        function resetTextareaHeight() { chatInput.style.height = '52px'; }
+
+        // --- Funções de Tema ---
+        function setTheme(theme) { /* ... (sem mudanças) ... */ if (theme === 'dark') { document.documentElement.classList.add('dark'); localStorage.setItem('theme', 'dark'); } else { document.documentElement.classList.remove('dark'); localStorage.setItem('theme', 'light'); } lucide.createIcons(); }
+        function toggleTheme() { /* ... (sem mudanças) ... */ if (document.documentElement.classList.contains('dark')) { setTheme('light'); } else { setTheme('dark'); } }
+
+        // --- Verificação/Criação/Atualização de Perfil ---
+        async function ensureProfileExists(user) {
+            // **IMPORTANTE: Usa a nova tabela 'profiles'**
+            try {
+                const { data: profileData, error: checkError } = await supabaseClient
+                    .from('profiles') // <--- Tabela nova
+                    .select('id').eq('id', user.id).maybeSingle();
+                if (checkError) throw checkError;
+                if (!profileData) {
+                    console.log(`Perfil não encontrado para ${user.id}, tentando criar...`);
+                    const { error: insertError } = await supabaseClient
+                        .from('profiles') // <--- Tabela nova
+                        .insert({ id: user.id, email: user.email });
+                    if (insertError) {
+                        // Verifica erro específico de email duplicado (constraint unique)
+                        if (insertError.code === '23505' /* unique_violation */ && insertError.message.includes('profiles_email_key')) {
+                            console.warn(`Email ${user.email} duplicado. Tentando atualizar ID do perfil existente...`);
+                            // Tenta atualizar o ID do perfil existente com o mesmo email para o ID do usuário atual
+                            const { error: updateError } = await supabaseClient
+                                .from('profiles') // <--- Tabela nova
+                                .update({ id: user.id }) // Atualiza o ID para o ID do usuário logado
+                                .eq('email', user.email); // Onde o email corresponde
+                            if (updateError) {
+                                console.error("Erro ao tentar atualizar ID do perfil existente:", updateError);
+                                throw insertError; // Re-lança o erro original de inserção se a atualização falhar
+                            }
+                            console.log(`ID do perfil com email ${user.email} atualizado para ${user.id}`);
+                        } else {
+                            // Se for outro erro de inserção, lança-o
+                            throw insertError;
+                        }
+                    } else { console.log(`Perfil criado para ${user.id}`); }
+                }
+                 return true; // Perfil existe ou foi criado/atualizado com sucesso
+            } catch (error) {
+                 console.error("Erro crítico ao configurar perfil:", error);
+                 showToast(`Erro perfil: ${error.message}. Não será possível salvar.`, 'error', 10000);
+                 return false; // Indica falha
             }
         }
-        
+
+        async function updateUserState(user) {
+            currentUser = user;
+            conversations = []; // Limpa cache local
+            conversationHistory.innerHTML = ''; // Limpa UI da sidebar
+            handleNewChat(); // Limpa chat principal e reseta estado
+            // Desabilita inputs inicialmente
+            chatInput.disabled = true; sendButton.disabled = true; recordAudioButton.disabled = true; toggleAttachmentButton.disabled = true; searchInput.disabled = true;
+
+            if (user) {
+                initialLoadingView.classList.add('hidden'); authView.classList.add('hidden'); chatView.classList.remove('hidden'); userEmailSpan.textContent = user.email; userEmailSpan.title = user.email; // Adiciona tooltip
+                const profileOk = await ensureProfileExists(user);
+                if (profileOk) {
+                    // Habilita inputs SE o perfil estiver ok
+                    chatInput.disabled = false; sendButton.disabled = false; recordAudioButton.disabled = false; toggleAttachmentButton.disabled = false; searchInput.disabled = false;
+                    loadConversations(user.id);
+                    handleNewChat(); // Garante que comece em nova conversa
+                } else {
+                     // Mantém desabilitado se ensureProfileExists falhar
+                     showToast("Falha ao verificar/criar perfil. Funcionalidades limitadas.", "error", 10000);
+                }
+            } else {
+                initialLoadingView.classList.add('hidden'); authView.classList.remove('hidden'); chatView.classList.add('hidden');
+                // Habilita inputs ao deslogar (eles estarão na tela de login/registro)
+                chatInput.disabled = false; sendButton.disabled = false; recordAudioButton.disabled = false; toggleAttachmentButton.disabled = false; searchInput.disabled = false;
+            }
+        }
+
+
         /**
          * Inicialização da Aplicação
          */
         async function initApp() {
-            // Renderiza ícones iniciais
+            const savedTheme = localStorage.getItem('theme'); const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches; if (savedTheme) setTheme(savedTheme); else if (prefersDark) setTheme('dark'); else setTheme('light');
             lucide.createIcons();
 
-            // Adiciona listeners de eventos
+            // --- Listeners ---
             showRegisterLink.addEventListener('click', (e) => { e.preventDefault(); toggleAuthView('register'); });
             showLoginLink.addEventListener('click', (e) => { e.preventDefault(); toggleAuthView('login'); });
-            
             loginForm.addEventListener('submit', handleLogin);
             registerForm.addEventListener('submit', handleRegister);
             logoutButton.addEventListener('click', handleLogout);
-            
             chatForm.addEventListener('submit', handleSendMessage);
-            
-            // Listeners de mídia atualizados
+            deleteConversationButton.addEventListener('click', () => { if (!activeConversationId && chatMessagesContent.children.length <= 1) { showToast('Nada para apagar.', 'info'); return; } showConfirmModal('Apagar Conversa','Tem certeza que deseja apagar esta conversa permanentemente?','Apagar', handleDeleteConversation); });
+            chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } });
+            chatInput.addEventListener('input', autoResizeTextarea);
+            newChatButton.addEventListener('click', handleNewChat);
+            toggleSidebarButton.addEventListener('click', toggleSidebar);
+            sidebarOverlay.addEventListener('click', toggleSidebar);
             recordAudioButton.addEventListener('click', handleToggleRecording);
-            attachImageButton.addEventListener('click', () => imageUploadInput.click()); // Aciona o input oculto
-            imageUploadInput.addEventListener('change', handleImageUpload); // Ouve mudanças no input
+            toggleAttachmentButton.addEventListener('click', (e) => { e.stopPropagation(); attachmentMenu.classList.toggle('hidden'); if (!attachmentMenu.classList.contains('hidden')) { void attachmentMenu.offsetWidth; attachmentMenu.classList.remove('opacity-0', 'scale-95', '-translate-y-2'); } else { attachmentMenu.classList.add('opacity-0', 'scale-95', '-translate-y-2'); } });
+            document.addEventListener('click', (e) => { if (!attachmentMenu.classList.contains('hidden') && !toggleAttachmentButton.contains(e.target) && !attachmentMenu.contains(e.target)) { attachmentMenu.classList.add('opacity-0', 'scale-95', '-translate-y-2'); setTimeout(() => attachmentMenu.classList.add('hidden'), 200); } }); // Fechar menu ao clicar fora
+            const closeMenu = () => { attachmentMenu.classList.add('opacity-0', 'scale-95', '-translate-y-2'); setTimeout(() => attachmentMenu.classList.add('hidden'), 200); };
+            attachImageButton.addEventListener('click', () => { imageUploadInput.click(); closeMenu(); });
+            attachVideoButton.addEventListener('click', () => { videoUploadInput.click(); closeMenu(); });
+            imageUploadInput.addEventListener('change', handleImageUpload);
+            videoUploadInput.addEventListener('change', handleVideoUpload);
+            cancelUploadButton.addEventListener('click', hideUploadPreview); // **NOVO**
+            modalCancelButton.addEventListener('click', closeModal);
+            modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
+            modalConfirmButton.addEventListener('click', () => { if (modalConfirmCallback) modalConfirmCallback(); });
+            themeToggleButton.addEventListener('click', toggleTheme);
+            searchInput.addEventListener('input', filterConversations); // **NOVO**
+            chatMessagesContainer.addEventListener('scroll', () => { /* ... (Scroll button logic - sem mudanças) ... */ const isScrolledUp = chatMessagesContainer.scrollHeight - chatMessagesContainer.scrollTop - chatMessagesContainer.clientHeight > SCROLL_THRESHOLD; if (isScrolledUp) { scrollToBottomButton.classList.remove('hidden', 'opacity-0'); } else { scrollToBottomButton.classList.add('opacity-0'); setTimeout(() => { if (!(chatMessagesContainer.scrollHeight - chatMessagesContainer.scrollTop - chatMessagesContainer.clientHeight > SCROLL_THRESHOLD)) { scrollToBottomButton.classList.add('hidden'); } }, 200); } });
+            scrollToBottomButton.addEventListener('click', () => { chatMessagesContainer.scrollTo({ top: chatMessagesContainer.scrollHeight, behavior: 'smooth' }); });
 
-            // Verifica a sessão atual
+
+            // --- Checagem de Sessão ---
             const { data: { session } } = await supabaseClient.auth.getSession();
-            updateUserState(session?.user || null);
+            await updateUserState(session?.user || null);
 
-            // Ouve mudanças no estado de autenticação (login, logout)
-            supabaseClient.auth.onAuthStateChange((event, session) => {
-                updateUserState(session?.user || null);
+            supabaseClient.auth.onAuthStateChange(async (event, session) => {
+                await updateUserState(session?.user || null);
             });
         }
-        
-        // Inicia a aplicação
+
         initApp();
 
     </script>
