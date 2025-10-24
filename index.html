@@ -12,6 +12,8 @@
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <!-- Biblioteca para Markdown (Renderiza a resposta do AI) -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- ** NOVO: Biblioteca para máscara de input (telefone) ** -->
+    <script src="https://unpkg.com/imask"></script>
 
     <style>
         /* Estilos CSS (sem alterações significativas, apenas ajustes visuais menores) */
@@ -96,6 +98,8 @@
         <div id="initial-loading" class="flex flex-col items-center gap-4">
             <svg class="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
             <p class="text-lg font-medium">Carregando Assistente M...</p>
+            <!-- ** NOVO: Mensagem de erro inicial ** -->
+            <p id="initial-error-message" class="text-red-500 text-sm mt-2 hidden"></p>
         </div>
 
         <div id="auth-view" class="hidden w-full max-w-lg p-6 md:p-8">
@@ -105,7 +109,52 @@
                 <p id="auth-description" class="text-center text-slate-500 dark:text-slate-400 mb-6">Faça login para continuar</p>
                 <div id="auth-message" class="hidden p-3 rounded-lg mb-4 text-sm"></div>
                 <form id="login-form" class="space-y-4"> <div> <label for="login-email" class="block text-sm font-medium mb-1">Email</label> <input type="email" id="login-email" required class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="voce@email.com"> </div> <div> <label for="login-password" class="block text-sm font-medium mb-1">Senha</label> <input type="password" id="login-password" required class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="••••••••"> </div> <button type="submit" id="login-button" class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200 flex items-center justify-center"> Entrar </button> <p class="text-sm text-center"> Não tem uma conta? <a href="#" id="show-register" class="font-medium text-blue-500 hover:underline">Cadastre-se</a> </p> </form>
-                <form id="register-form" class="hidden space-y-4"> <div class="grid grid-cols-1 md:grid-cols-2 gap-4"> <div> <label for="reg-fullname" class="block text-sm font-medium mb-1">Nome Completo</label> <input type="text" id="reg-fullname" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Seu Nome Completo"> </div> <div> <label for="reg-email" class="block text-sm font-medium mb-1">Email *</label> <input type="email" id="reg-email" required class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="voce@email.com"> </div> </div> <div class="grid grid-cols-1 md:grid-cols-2 gap-4"> <div> <label for="reg-birthdate" class="block text-sm font-medium mb-1">Data de Nascimento</label> <input type="date" id="reg-birthdate" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"> </div> <div> <label for="reg-cpf" class="block text-sm font-medium mb-1">CPF</label> <input type="text" id="reg-cpf" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="000.000.000-00"> </div> </div> <div class="grid grid-cols-1 md:grid-cols-2 gap-4"> <div> <label for="reg-company-name" class="block text-sm font-medium mb-1">Empresa</label> <input type="text" id="reg-company-name" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nome da Empresa"> </div> <div> <label for="reg-company-position" class="block text-sm font-medium mb-1">Cargo</label> <input type="text" id="reg-company-position" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Seu Cargo"> </div> </div> <div> <label for="reg-password" class="block text-sm font-medium mb-1">Senha *</label> <input type="password" id="reg-password" required minlength="6" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Mínimo 6 caracteres"> </div> <button type="submit" id="register-button" class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200 flex items-center justify-center"> Criar Conta </button> <p class="text-sm text-center"> Já tem uma conta? <a href="#" id="show-login" class="font-medium text-blue-500 hover:underline">Faça login</a> </p> </form>
+                
+                <!-- Formulário de Registro Atualizado -->
+                <form id="register-form" class="hidden space-y-4"> 
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4"> 
+                        <div> 
+                            <label for="reg-fullname" class="block text-sm font-medium mb-1">Nome Completo</label> 
+                            <input type="text" id="reg-fullname" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Seu Nome Completo"> 
+                        </div> 
+                        <div> 
+                            <label for="reg-email" class="block text-sm font-medium mb-1">Email *</label> 
+                            <input type="email" id="reg-email" required class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="voce@email.com"> 
+                        </div> 
+                    </div> 
+                    <!-- ** NOVO: Campo WhatsApp Obrigatório ** -->
+                    <div>
+                        <label for="reg-whatsapp" class="block text-sm font-medium mb-1">WhatsApp *</label> 
+                        <input type="tel" id="reg-whatsapp" required class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="(00) 00000-0000"> 
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4"> 
+                        <div> 
+                            <label for="reg-birthdate" class="block text-sm font-medium mb-1">Data de Nascimento</label> 
+                            <input type="date" id="reg-birthdate" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"> 
+                        </div> 
+                        <div> 
+                            <label for="reg-cpf" class="block text-sm font-medium mb-1">CPF</label> 
+                            <input type="text" id="reg-cpf" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="000.000.000-00"> 
+                        </div> 
+                    </div> 
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4"> 
+                        <div> 
+                            <label for="reg-company-name" class="block text-sm font-medium mb-1">Empresa</label> 
+                            <input type="text" id="reg-company-name" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nome da Empresa"> 
+                        </div> 
+                        <div> 
+                            <label for="reg-company-position" class="block text-sm font-medium mb-1">Cargo</label> 
+                            <input type="text" id="reg-company-position" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Seu Cargo"> 
+                        </div> 
+                    </div> 
+                    <div> 
+                        <label for="reg-password" class="block text-sm font-medium mb-1">Senha *</label> 
+                        <input type="password" id="reg-password" required minlength="6" class="w-full px-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Mínimo 6 caracteres"> 
+                    </div> 
+                    <button type="submit" id="register-button" class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200 flex items-center justify-center"> Criar Conta </button> 
+                    <p class="text-sm text-center"> Já tem uma conta? <a href="#" id="show-login" class="font-medium text-blue-500 hover:underline">Faça login</a> </p> 
+                </form>
+
             </div>
         </div>
 
@@ -136,7 +185,11 @@
                             <span class="w-8 h-8 rounded-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center flex-shrink-0">
                                 <i data-lucide="user" class="w-5 h-5"></i>
                             </span>
-                            <span id="user-email" class="text-sm text-slate-500 dark:text-slate-400 truncate"></span>
+                            <!-- ** NOVO: Container para Email e Plano ** -->
+                            <div class="flex flex-col overflow-hidden">
+                                <span id="user-email" class="text-sm text-slate-500 dark:text-slate-400 truncate" title=""></span>
+                                <span id="plan-badge" class="text-xs font-semibold"></span>
+                            </div>
                         </div>
                         <button id="theme-toggle-button" title="Alternar Tema" class="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex-shrink-0">
                             <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
@@ -156,6 +209,15 @@
                 <header class="bg-white dark:bg-slate-800 shadow-sm w-full p-4 flex justify-between items-center z-10 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
                     <div class="flex items-center gap-3"> <button id="toggle-sidebar-button" class="p-2 rounded-lg text-slate-600 dark:text-slate-300 md:hidden"> <i data-lucide="menu" class="w-6 h-6"></i> </button> <div class="flex items-center gap-3"> <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-blue-600"> <path d="M12 2C6.477 2 2 6.477 2 12C2 17.523 6.477 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2ZM12 4C16.418 4 20 7.582 20 12C20 16.418 16.418 20 12 20C7.582 20 4 16.418 4 12C4 7.582 7.582 4 12 4Z" fill="currentColor" opacity="0.3"/> <path d="M12 6C8.686 6 6 8.686 6 12C6 15.314 8.686 18 12 18C15.314 18 18 15.314 18 12C18 8.686 15.314 6 12 6ZM12 16C9.791 16 8 14.209 8 12C8 9.791 9.791 8 12 8C14.209 8 16 9.791 16 12C16 14.209 14.209 16 12 16Z" fill="currentColor"/> <path d="M12 10C10.895 10 10 10.895 10 12C10 13.105 10.895 14 12 14C13.105 14 14 13.105 14 12C14 10.895 13.105 10 12 10Z" fill="currentColor"/> </svg> <h1 class="text-xl font-semibold">M Assistente</h1> </div> </div> <div class="flex items-center gap-2 md:gap-4"> <button id="delete-conversation-button" title="Apagar conversa" class="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded-lg p-2 bg-slate-100 dark:bg-slate-700 hover:bg-red-100 dark:hover:bg-red-900/50"> <i data-lucide="trash-2" class="w-4 h-4"></i> <span class="hidden md:inline">Apagar</span> </button> </div>
                 </header>
+
+                <!-- ** NOVO: Banner de Limite Freemium ** -->
+                <div id="freemium-limit-banner" class="hidden p-3 bg-yellow-500 text-center text-gray-900 font-semibold text-sm border-b border-yellow-600">
+                    Você atingiu seu limite de mensagens diárias no plano GRATUITO.
+                    <a href="#" id="freemium-upgrade-link" target="_blank" class="underline font-bold hover:text-gray-800">
+                        Faça upgrade para o PRO
+                    </a>
+                    para conversas ilimitadas!
+                </div>
 
                 <main id="chat-messages" class="chat-messages custom-scrollbar flex-1 overflow-y-auto p-4 md:p-6 lg:p-10 relative">
                     <div class="max-w-3xl mx-auto w-full space-y-6">
@@ -230,12 +292,17 @@
         const N8N_WEBHOOK_URL = 'https://n8n.tnxmedia.pro/webhook/70ff3726-77f4-4425-9c46-c7cb746431c7';
         const N8N_WEBHOOK_SECRET = '2C5z7EpRHv3RH4M';
 
+        // ** NOVO: Configurações Freemium **
+        const KIRVANO_UPGRADE_LINK = 'https://pay.kirvano.com/2e0853f7-bc3a-40d2-9d0f-9a69f7d84eda';
+        const FREE_PLAN_LIMIT = 10; // Limite do seu backend n8n
+
         const { createClient } = supabase;
         const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // --- Referências de UI ---
         const app = document.getElementById('app');
         const initialLoadingView = document.getElementById('initial-loading');
+        const initialErrorMessage = document.getElementById('initial-error-message'); // ** NOVO **
         const authView = document.getElementById('auth-view');
         const chatView = document.getElementById('chat-view');
         const loginForm = document.getElementById('login-form');
@@ -279,16 +346,22 @@
         const uploadPreviewContainer = document.getElementById('upload-preview-container'); // **NOVO**
         const uploadPreview = document.getElementById('upload-preview'); // **NOVO**
         const cancelUploadButton = document.getElementById('cancel-upload-button'); // **NOVO**
+        const regWhatsappInput = document.getElementById('reg-whatsapp'); // ** NOVO: Referência WhatsApp **
 
 
         // --- Estado da Aplicação ---
         let isRecording = false;
         let mediaRecorder; let audioChunks = []; let recordingInterval = null; let recordingStartTime = null;
-        let currentUser = null; let conversations = []; let activeConversationId = null; // Alterado de activeSessionId
+        let currentUser = null; 
+        let userProfile = null; // ** NOVO: Armazena o perfil (plano, contagem) **
+        let conversations = []; 
+        let activeConversationId = null; // Alterado de activeSessionId
+        let realtimeProfileChannel = null; // ** NOVO: Canal para ouvir mudanças no perfil **
         let modalConfirmCallback = null;
         const SCROLL_THRESHOLD = 300;
         let fileToUpload = null; // **NOVO:** Para armazenar o arquivo do preview
         let fileTypeToUpload = null; // **NOVO:** 'image' ou 'video'
+        let whatsappMask = null; // ** NOVO: Máscara WhatsApp **
 
         // --- Funções do Modal ---
         function showConfirmModal(title, message, confirmText = 'Confirmar', onConfirm) {
@@ -310,7 +383,34 @@
          }
         async function handleRegister(e) {
             // **IMPORTANTE: Usa a nova tabela 'profiles'**
-            e.preventDefault(); const button = document.getElementById('register-button'); button.disabled = true; button.innerHTML = '<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>'; const email = document.getElementById('reg-email').value; const { data: authData, error: authError } = await supabaseClient.auth.signUp({ email: email, password: document.getElementById('reg-password').value }); if (authError) { showAuthMessage(authError.message, 'error'); button.disabled = false; button.innerHTML = 'Criar Conta'; return; } if (!authData.user) { showAuthMessage('Erro ao criar usuário.', 'error'); button.disabled = false; button.innerHTML = 'Criar Conta'; return; }
+            e.preventDefault(); 
+            const button = document.getElementById('register-button'); 
+            button.disabled = true; 
+            button.innerHTML = '<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>'; 
+            const email = document.getElementById('reg-email').value; 
+            const whatsappRaw = whatsappMask ? whatsappMask.unmaskedValue : regWhatsappInput.value; // Pega valor sem máscara
+            
+            // ** NOVO: Validação básica do WhatsApp (somente números) **
+            const whatsappNumber = whatsappRaw.replace(/\D/g, ''); // Remove tudo que não é dígito
+            if (!whatsappNumber || whatsappNumber.length < 10) { // Exige pelo menos 10 dígitos (ex: 11988887777)
+                showAuthMessage('Número de WhatsApp inválido ou incompleto.', 'error');
+                button.disabled = false; button.innerHTML = 'Criar Conta'; 
+                return;
+            }
+            // Formata para o padrão JID (ex: 5511988887777@s.whatsapp.net) - Assumindo DDI 55 Brasil
+            const whatsappJid = `55${whatsappNumber}@s.whatsapp.net`;
+
+            const { data: authData, error: authError } = await supabaseClient.auth.signUp({ email: email, password: document.getElementById('reg-password').value }); 
+            if (authError) { 
+                showAuthMessage(authError.message, 'error'); 
+                button.disabled = false; button.innerHTML = 'Criar Conta'; 
+                return; 
+            } 
+            if (!authData.user) { 
+                showAuthMessage('Erro ao criar usuário.', 'error'); 
+                button.disabled = false; button.innerHTML = 'Criar Conta'; 
+                return; 
+            }
             // Insere na nova tabela 'profiles'
             const { error: profileError } = await supabaseClient
                 .from('profiles') // <--- Tabela nova
@@ -318,16 +418,37 @@
                     id: authData.user.id, // ID do Auth vira PK aqui
                     email: email,
                     full_name: document.getElementById('reg-fullname').value || null,
+                    // ** NOVO: Insere o whatsapp_jid formatado **
+                    whatsapp_jid: whatsappJid,
+                    plan: 'GRATUITO',
+                    daily_message_count: 0
                     // Mantenha os outros campos se os adicionou ao SQL
                     // birth_date: document.getElementById('reg-birthdate').value || null,
                     // cpf: document.getElementById('reg-cpf').value || null,
                     // company_name: document.getElementById('reg-company-name').value || null,
                     // company_position: document.getElementById('reg-company-position').value || null,
                 });
-             if (profileError) { showAuthMessage(`Erro perfil: ${profileError.message}.`, 'error'); } else { showAuthMessage('Conta criada! Verifique seu email.', 'success'); toggleAuthView('login'); } button.disabled = false; button.innerHTML = 'Criar Conta';
+             if (profileError) { 
+                 // ** NOVO: Verifica erro de whatsapp_jid duplicado **
+                 if (profileError.code === '23505' && profileError.message.includes('profiles_whatsapp_jid_key')) {
+                    showAuthMessage('Este número de WhatsApp já está cadastrado.', 'error');
+                 } else {
+                    showAuthMessage(`Erro ao criar perfil: ${profileError.message}.`, 'error'); 
+                 }
+             } else { 
+                 showAuthMessage('Conta criada! Verifique seu email.', 'success'); 
+                 toggleAuthView('login'); 
+             } 
+             button.disabled = false; button.innerHTML = 'Criar Conta';
         }
         async function handleLogout() {
              await supabaseClient.auth.signOut();
+             // ** NOVO: Limpa o canal e o perfil **
+             if (realtimeProfileChannel) {
+                supabaseClient.removeChannel(realtimeProfileChannel);
+                realtimeProfileChannel = null;
+             }
+             userProfile = null;
         }
 
         // --- Funções da Sidebar ---
@@ -387,7 +508,12 @@
                     convoEl.appendChild(editButton);
                     conversationHistory.appendChild(convoEl);
                 });
-                lucide.createIcons(); // Renderiza ícone de editar
+                // ** CORREÇÃO: Chama createIcons() apenas se lucide estiver disponível **
+                if (window.lucide) {
+                    lucide.createIcons(); // Renderiza ícone de editar
+                } else {
+                    console.warn("Lucide ainda não carregado em renderConversations");
+                }
             }
         }
         function filterConversations() {
@@ -433,10 +559,93 @@
         // --- Funções de Chat ---
         function escapeHTML(text) { if (!text) return ''; const p = document.createElement('p'); p.textContent = text; return p.innerHTML; }
         function parseMarkdown(text) { if (!text) return ''; marked.use({ pedantic: false, gfm: true, breaks: true, sanitize: false, smartypants: true }); return marked.parse(text); }
-        function showToast(message, type = 'info', duration = 3000) { /* ... (sem mudanças) ... */ const toast = document.createElement('div'); toast.className = `toast toast-${type}`; let icon = 'info'; if (type === 'success') icon = 'check-circle'; if (type === 'error') icon = 'alert-circle'; if (type === 'warning') icon = 'alert-triangle'; toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i><span>${escapeHTML(message)}</span>`; toastContainer.appendChild(toast); lucide.createIcons(); setTimeout(() => { toast.classList.add('toast-out'); toast.addEventListener('animationend', () => toast.remove()); }, duration); }
-        function copyTextToClipboard(text, buttonElement, feedbackText = 'Copiado!', originalText = 'Copiar') { /* ... (sem mudanças) ... */ const textarea = document.createElement('textarea'); textarea.value = text; document.body.appendChild(textarea); textarea.select(); try { document.execCommand('copy'); const isIconButton = buttonElement.querySelector('i, svg'); if (isIconButton) { buttonElement.title = feedbackText; } else { buttonElement.textContent = feedbackText; } buttonElement.classList.add('copied'); if (buttonElement.classList.contains('copy-text-button')) { buttonElement.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i>'; lucide.createIcons(); } setTimeout(() => { if (isIconButton) { buttonElement.title = originalText; } else { buttonElement.textContent = originalText; } buttonElement.classList.remove('copied'); if (buttonElement.classList.contains('copy-text-button')) { buttonElement.innerHTML = '<i data-lucide="copy" class="w-4 h-4"></i>'; lucide.createIcons(); } }, 1500); } catch (err) { console.error('Erro ao copiar:', err); showToast('Erro ao copiar texto.', 'error'); if (!buttonElement.querySelector('i, svg')) { buttonElement.textContent = 'Erro'; } } document.body.removeChild(textarea); }
+        function showToast(message, type = 'info', duration = 3000) { 
+             const toast = document.createElement('div'); 
+             toast.className = `toast toast-${type}`; 
+             let icon = 'info'; 
+             if (type === 'success') icon = 'check-circle'; 
+             if (type === 'error') icon = 'alert-circle'; 
+             if (type === 'warning') icon = 'alert-triangle'; 
+             toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i><span>${escapeHTML(message)}</span>`; 
+             toastContainer.appendChild(toast); 
+             // ** CORREÇÃO: Chama createIcons() apenas se lucide estiver disponível **
+             if (window.lucide) {
+                 lucide.createIcons(); 
+             }
+             setTimeout(() => { 
+                 toast.classList.add('toast-out'); 
+                 toast.addEventListener('animationend', () => toast.remove()); 
+             }, duration); 
+         }
+        function copyTextToClipboard(text, buttonElement, feedbackText = 'Copiado!', originalText = 'Copiar') { 
+             const textarea = document.createElement('textarea'); 
+             textarea.value = text; 
+             document.body.appendChild(textarea); 
+             textarea.select(); 
+             try { 
+                 document.execCommand('copy'); 
+                 const isIconButton = buttonElement.querySelector('i, svg'); 
+                 if (isIconButton) { 
+                     buttonElement.title = feedbackText; 
+                 } else { 
+                     buttonElement.textContent = feedbackText; 
+                 } 
+                 buttonElement.classList.add('copied'); 
+                 if (buttonElement.classList.contains('copy-text-button')) { 
+                     buttonElement.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i>'; 
+                     // ** CORREÇÃO: Chama createIcons() apenas se lucide estiver disponível **
+                     if (window.lucide) lucide.createIcons(); 
+                 } 
+                 setTimeout(() => { 
+                     if (isIconButton) { 
+                         buttonElement.title = originalText; 
+                     } else { 
+                         buttonElement.textContent = originalText; 
+                     } 
+                     buttonElement.classList.remove('copied'); 
+                     if (buttonElement.classList.contains('copy-text-button')) { 
+                         buttonElement.innerHTML = '<i data-lucide="copy" class="w-4 h-4"></i>'; 
+                         // ** CORREÇÃO: Chama createIcons() apenas se lucide estiver disponível **
+                         if (window.lucide) lucide.createIcons(); 
+                     } 
+                 }, 1500); 
+             } catch (err) { 
+                 console.error('Erro ao copiar:', err); 
+                 showToast('Erro ao copiar texto.', 'error'); 
+                 if (!buttonElement.querySelector('i, svg')) { 
+                     buttonElement.textContent = 'Erro'; 
+                 } 
+             } 
+             document.body.removeChild(textarea); 
+         }
         function addCopyButtonsToCodeBlocks(parentElement) { /* ... (sem mudanças) ... */ const codeBlocks = parentElement.querySelectorAll('pre'); codeBlocks.forEach(pre => { if (pre.querySelector('.copy-code-button')) return; const codeElement = pre.querySelector('code'); const codeText = codeElement ? codeElement.innerText : pre.innerText; const button = document.createElement('button'); button.textContent = 'Copiar'; button.className = 'copy-code-button'; button.onclick = () => copyTextToClipboard(codeText, button, 'Copiado!', 'Copiar'); pre.appendChild(button); }); }
-        function addCopyTextButton(aiMessageElement) { /* ... (sem mudanças) ... */ const messageBubble = aiMessageElement.querySelector('.group'); if (!messageBubble) return; const contentDiv = messageBubble.querySelector('.markdown-content'); if (!contentDiv) return; let actionsContainer = messageBubble.querySelector('.message-actions'); if (!actionsContainer) { actionsContainer = document.createElement('div'); actionsContainer.className = 'message-actions'; messageBubble.appendChild(actionsContainer); } if (actionsContainer.querySelector('.copy-text-button')) return; const button = document.createElement('button'); button.className = 'copy-button copy-text-button'; button.title = 'Copiar texto'; button.innerHTML = '<i data-lucide="copy" class="w-4 h-4"></i>'; button.onclick = (e) => { e.stopPropagation(); const textToCopy = contentDiv.innerText || contentDiv.textContent; copyTextToClipboard(textToCopy, button, 'Copiado!', 'Copiar Texto'); }; actionsContainer.appendChild(button); lucide.createIcons(); }
+        function addCopyTextButton(aiMessageElement) { 
+             const messageBubble = aiMessageElement.querySelector('.group'); 
+             if (!messageBubble) return; 
+             const contentDiv = messageBubble.querySelector('.markdown-content'); 
+             if (!contentDiv) return; 
+             let actionsContainer = messageBubble.querySelector('.message-actions'); 
+             if (!actionsContainer) { 
+                 actionsContainer = document.createElement('div'); 
+                 actionsContainer.className = 'message-actions'; 
+                 messageBubble.appendChild(actionsContainer); 
+             } 
+             if (actionsContainer.querySelector('.copy-text-button')) return; 
+             const button = document.createElement('button'); 
+             button.className = 'copy-button copy-text-button'; 
+             button.title = 'Copiar texto'; 
+             button.innerHTML = '<i data-lucide="copy" class="w-4 h-4"></i>'; 
+             button.onclick = (e) => { 
+                 e.stopPropagation(); 
+                 const textToCopy = contentDiv.innerText || contentDiv.textContent; 
+                 copyTextToClipboard(textToCopy, button, 'Copiado!', 'Copiar Texto'); 
+             }; 
+             actionsContainer.appendChild(button); 
+             // ** CORREÇÃO: Chama createIcons() apenas se lucide estiver disponível **
+             if (window.lucide) {
+                 lucide.createIcons(); 
+             }
+         }
 
          function addMessageToChat(messageData) {
             const { role, content, media_url, media_type } = messageData;
@@ -465,7 +674,10 @@
             }
 
             chatMessagesContent.appendChild(messageEl);
-            lucide.createIcons();
+            // ** CORREÇÃO: Chama createIcons() apenas se lucide estiver disponível **
+            if (window.lucide) {
+                lucide.createIcons();
+            }
             if (role === 'ai') {
                  const markdownContentDiv = messageEl.querySelector('.markdown-content');
                  if(markdownContentDiv) addCopyButtonsToCodeBlocks(markdownContentDiv);
@@ -499,6 +711,14 @@
         // **ALTERADO:** Lida com texto OU mídia do preview
         async function handleSendMessage(e) {
             if (e) e.preventDefault();
+            
+            // ** NOVO: Verificação de Limite Freemium (Segurança Dupla) **
+            if (userProfile && (userProfile.plan === 'GRATUITO' || userProfile.plan === null) && userProfile.daily_message_count >= FREE_PLAN_LIMIT) {
+                showToast('Você atingiu seu limite diário. Faça upgrade para PRO.', 'error');
+                updateFreemiumUI(); // Re-sincroniza a UI
+                return;
+            }
+
             const text = chatInput.value.trim();
 
             // Verifica se há um arquivo no preview para enviar
@@ -588,6 +808,16 @@
                 showToast(`Erro ao conectar com assistente: ${error.message}`, 'error');
             } finally {
                 sendButton.disabled = false; chatInput.focus();
+                // ** NOVO: Re-valida o estado dos botões (pode ter atingido o limite) **
+                // O n8n já atualizou a contagem, o listener realtime vai pegar
+                // Mas por via das dúvidas, podemos forçar uma re-leitura
+                if (userProfile) {
+                    const { data } = await supabaseClient.from('profiles').select('daily_message_count').eq('id', userProfile.id).single();
+                    if (data) {
+                        userProfile.daily_message_count = data.daily_message_count;
+                        updateFreemiumUI();
+                    }
+                }
             }
         }
 
@@ -621,6 +851,13 @@
         // **ALTERADO:** Lógica de envio de mídia
         async function sendMediaMessage(mediaUrl, mediaType) {
             if (!currentUser) return;
+            
+            // ** NOVO: Verificação de Limite Freemium (Segurança Dupla) **
+            if (userProfile && (userProfile.plan === 'GRATUITO' || userProfile.plan === null) && userProfile.daily_message_count >= FREE_PLAN_LIMIT) {
+                showToast('Você atingiu seu limite diário. Faça upgrade para PRO.', 'error');
+                updateFreemiumUI(); // Re-sincroniza a UI
+                return;
+            }
 
             let currentConversationId = activeConversationId;
             const isNewChat = !currentConversationId;
@@ -691,12 +928,44 @@
             } catch (error) {
                 console.error('Erro ao processar mídia via n8n:', error); hideLoadingIndicator();
                  showToast(`Erro ao processar mídia: ${error.message}`, 'error');
+            } finally {
+                // ** NOVO: Re-valida o estado dos botões (pode ter atingido o limite) **
+                if (userProfile) {
+                    const { data } = await supabaseClient.from('profiles').select('daily_message_count').eq('id', userProfile.id).single();
+                    if (data) {
+                        userProfile.daily_message_count = data.daily_message_count;
+                        updateFreemiumUI();
+                    }
+                }
             }
         }
 
         function formatTime(seconds) { const minutes = Math.floor(seconds / 60); const remainingSeconds = Math.floor(seconds % 60); return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`; }
         async function handleToggleRecording() {
-            const setIcon = (iconName) => { const currentIcon = recordAudioButton.querySelector('i[data-lucide], svg'); if (currentIcon) { if (currentIcon.tagName === 'I') { currentIcon.setAttribute('data-lucide', iconName); } else { currentIcon.remove(); recordAudioButton.insertAdjacentHTML('afterbegin', `<i data-lucide="${iconName}" class="w-5 h-5"></i>`); } lucide.createIcons(); } else { recordAudioButton.insertAdjacentHTML('afterbegin', `<i data-lucide="${iconName}" class="w-5 h-5"></i>`); lucide.createIcons(); } };
+            // ** NOVO: Verificação de Limite Freemium (Segurança Dupla) **
+            if (userProfile && (userProfile.plan === 'GRATUITO' || userProfile.plan === null) && userProfile.daily_message_count >= FREE_PLAN_LIMIT) {
+                showToast('Você atingiu seu limite diário. Faça upgrade para PRO.', 'error');
+                updateFreemiumUI(); // Re-sincroniza a UI
+                return;
+            }
+
+            const setIcon = (iconName) => { 
+                const currentIcon = recordAudioButton.querySelector('i[data-lucide], svg'); 
+                if (currentIcon) { 
+                    if (currentIcon.tagName === 'I') { 
+                        currentIcon.setAttribute('data-lucide', iconName); 
+                    } else { 
+                        currentIcon.remove(); 
+                        recordAudioButton.insertAdjacentHTML('afterbegin', `<i data-lucide="${iconName}" class="w-5 h-5"></i>`); 
+                    } 
+                    // ** CORREÇÃO: Chama createIcons() apenas se lucide estiver disponível **
+                    if (window.lucide) lucide.createIcons(); 
+                } else { 
+                    recordAudioButton.insertAdjacentHTML('afterbegin', `<i data-lucide="${iconName}" class="w-5 h-5"></i>`); 
+                    // ** CORREÇÃO: Chama createIcons() apenas se lucide estiver disponível **
+                    if (window.lucide) lucide.createIcons(); 
+                } 
+            };
             if (isRecording) {
                 if (mediaRecorder && mediaRecorder.state !== "inactive") { mediaRecorder.stop(); clearInterval(recordingInterval); recordingTimerSpan.classList.add('hidden'); }
             } else {
@@ -729,6 +998,13 @@
 
         // --- Funções de Upload e Preview ---
         function showUploadPreview(file, type) {
+            // ** NOVO: Verificação de Limite Freemium (Segurança Dupla) **
+            if (userProfile && (userProfile.plan === 'GRATUITO' || userProfile.plan === null) && userProfile.daily_message_count >= FREE_PLAN_LIMIT) {
+                showToast('Você atingiu seu limite diário. Faça upgrade para PRO.', 'error');
+                updateFreemiumUI(); // Re-sincroniza a UI
+                return;
+            }
+
             fileToUpload = file;
             fileTypeToUpload = type;
             uploadPreview.innerHTML = ''; // Limpa preview anterior
@@ -754,7 +1030,8 @@
 
             uploadPreview.appendChild(previewElement);
             uploadPreview.appendChild(fileNameSpan);
-            if(previewElement.tagName === 'I') lucide.createIcons(); // Renderiza ícone se for o caso
+            // ** CORREÇÃO: Chama createIcons() apenas se lucide estiver disponível **
+            if(previewElement.tagName === 'I' && window.lucide) lucide.createIcons(); // Renderiza ícone se for o caso
 
             uploadPreviewContainer.classList.remove('hidden');
             chatInput.disabled = true; // Desabilita texto enquanto preview ativo
@@ -766,8 +1043,8 @@
             fileTypeToUpload = null;
             uploadPreviewContainer.classList.add('hidden');
             uploadPreview.innerHTML = '';
-            chatInput.disabled = false;
-            chatInput.placeholder = 'Envie uma mensagem...';
+            // ** ATUALIZADO: Só re-habilita se o limite não foi atingido **
+            updateFreemiumUI();
         }
 
         function handleImageUpload(event) {
@@ -835,8 +1112,142 @@
         function resetTextareaHeight() { chatInput.style.height = '52px'; }
 
         // --- Funções de Tema ---
-        function setTheme(theme) { /* ... (sem mudanças) ... */ if (theme === 'dark') { document.documentElement.classList.add('dark'); localStorage.setItem('theme', 'dark'); } else { document.documentElement.classList.remove('dark'); localStorage.setItem('theme', 'light'); } lucide.createIcons(); }
+        function setTheme(theme) { 
+             if (theme === 'dark') { 
+                 document.documentElement.classList.add('dark'); 
+                 localStorage.setItem('theme', 'dark'); 
+             } else { 
+                 document.documentElement.classList.remove('dark'); 
+                 localStorage.setItem('theme', 'light'); 
+             } 
+             // ** CORREÇÃO: Chama createIcons() apenas se lucide estiver disponível **
+             if (window.lucide) {
+                 lucide.createIcons(); 
+             }
+         }
         function toggleTheme() { /* ... (sem mudanças) ... */ if (document.documentElement.classList.contains('dark')) { setTheme('light'); } else { setTheme('dark'); } }
+
+        // ** NOVO: Funções de Lógica Freemium e Perfil **
+
+        /**
+         * Busca o perfil completo do usuário na tabela 'profiles'
+         */
+        async function fetchUserProfile(user) {
+            if (!user) {
+                userProfile = null;
+                return null;
+            }
+            try {
+                const { data, error } = await supabaseClient
+                    .from('profiles')
+                    .select('*') // Pega tudo: plan, daily_message_count, etc.
+                    .eq('id', user.id)
+                    .single();
+                
+                if (error) throw error;
+                userProfile = data;
+                return data;
+            } catch (error) {
+                console.error("Erro ao buscar perfil:", error);
+                // Não mostra toast aqui para evitar spam na inicialização
+                userProfile = null;
+                return null;
+            }
+        }
+
+        /**
+         * Atualiza a UI (banner, inputs) com base no plano do usuário
+         */
+        function updateFreemiumUI() {
+            const banner = document.getElementById('freemium-limit-banner');
+            const upgradeLink = document.getElementById('freemium-upgrade-link');
+            const planBadge = document.getElementById('plan-badge');
+
+            // Atualiza o link de upgrade no banner
+            if (upgradeLink) {
+                upgradeLink.href = KIRVANO_UPGRADE_LINK;
+            }
+
+            if (!userProfile) {
+                if (planBadge) {
+                    planBadge.textContent = '...';
+                    planBadge.className = 'text-xs font-semibold text-slate-400';
+                }
+                // Garante que os inputs estejam desabilitados se não houver perfil
+                 chatInput.disabled = true;
+                 sendButton.disabled = true;
+                 recordAudioButton.disabled = true;
+                 toggleAttachmentButton.disabled = true;
+                return;
+            }
+
+            // Atualiza o Plan Badge na sidebar
+            if (planBadge) {
+                if (userProfile.plan === 'PRO') {
+                    planBadge.textContent = 'Plano PRO';
+                    planBadge.className = 'text-xs font-semibold text-green-500';
+                } else {
+                    planBadge.textContent = 'Plano GRATUITO';
+                    planBadge.className = 'text-xs font-semibold text-yellow-500';
+                }
+            }
+
+            // Verifica se o limite foi atingido
+            const limitReached = (userProfile.plan === 'GRATUITO' || userProfile.plan === null) && 
+                                 (userProfile.daily_message_count >= FREE_PLAN_LIMIT);
+
+            if (limitReached) {
+                if (banner) banner.classList.remove('hidden');
+                chatInput.disabled = true;
+                chatInput.placeholder = 'Limite diário atingido. Faça upgrade para PRO.';
+                sendButton.disabled = true;
+                recordAudioButton.disabled = true;
+                toggleAttachmentButton.disabled = true;
+            } else {
+                if (banner) banner.classList.add('hidden');
+                // Só habilita o input de texto se não houver preview de upload ativo
+                 chatInput.disabled = (fileToUpload !== null);
+                 chatInput.placeholder = (fileToUpload !== null) ? `Envie ${fileTypeToUpload === 'image' ? 'a imagem' : 'o vídeo'} ou cancele...` : 'Envie uma mensagem...';
+                 sendButton.disabled = false;
+                 recordAudioButton.disabled = false;
+                 toggleAttachmentButton.disabled = false;
+            }
+        }
+
+        /**
+         * Ouve mudanças no perfil do usuário (plano, contagem) em tempo real
+         */
+        function setupRealtimeProfileListener(user) {
+            if (realtimeProfileChannel) {
+                supabaseClient.removeChannel(realtimeProfileChannel);
+            }
+            if (!user) return;
+
+            realtimeProfileChannel = supabaseClient.channel(`profile-changes-${user.id}`)
+                .on(
+                    'postgres_changes',
+                    { 
+                        event: 'UPDATE', 
+                        schema: 'public', 
+                        table: 'profiles',
+                        filter: `id=eq.${user.id}`
+                    },
+                    (payload) => {
+                        console.log('Perfil atualizado (Realtime):', payload.new);
+                        showToast('Seu perfil foi atualizado!', 'info');
+                        userProfile = { ...userProfile, ...payload.new }; // Mescla as mudanças
+                        updateFreemiumUI();
+                    }
+                )
+                .subscribe((status, err) => {
+                    if (status === 'SUBSCRIBED') {
+                        console.log(`Ouvindo mudanças no perfil de ${user.id}`);
+                    }
+                    if (status === 'CHANNEL_ERROR') {
+                        console.error('Erro no canal Realtime (Perfil):', err);
+                    }
+                });
+        }
 
         // --- Verificação/Criação/Atualização de Perfil ---
         async function ensureProfileExists(user) {
@@ -850,7 +1261,13 @@
                     console.log(`Perfil não encontrado para ${user.id}, tentando criar...`);
                     const { error: insertError } = await supabaseClient
                         .from('profiles') // <--- Tabela nova
-                        .insert({ id: user.id, email: user.email });
+                        .insert({ 
+                            id: user.id, 
+                            email: user.email,
+                            // ** NOVO: Define o plano padrão no cadastro de emergência **
+                            plan: 'GRATUITO',
+                            daily_message_count: 0
+                        });
                     if (insertError) {
                         // Verifica erro específico de email duplicado (constraint unique)
                         if (insertError.code === '23505' /* unique_violation */ && insertError.message.includes('profiles_email_key')) {
@@ -886,23 +1303,83 @@
             handleNewChat(); // Limpa chat principal e reseta estado
             // Desabilita inputs inicialmente
             chatInput.disabled = true; sendButton.disabled = true; recordAudioButton.disabled = true; toggleAttachmentButton.disabled = true; searchInput.disabled = true;
+            initialErrorMessage.classList.add('hidden'); // ** NOVO: Esconde erro inicial **
 
             if (user) {
-                initialLoadingView.classList.add('hidden'); authView.classList.add('hidden'); chatView.classList.remove('hidden'); userEmailSpan.textContent = user.email; userEmailSpan.title = user.email; // Adiciona tooltip
-                const profileOk = await ensureProfileExists(user);
-                if (profileOk) {
-                    // Habilita inputs SE o perfil estiver ok
+                // ** LÓGICA DE PERFIL/FREEMIUM ATUALIZADA **
+                console.log("Tentando carregar perfil para o usuário:", user.id);
+                const profile = await fetchUserProfile(user); // Busca o perfil completo
+                
+                if (profile) {
+                    console.log("Perfil carregado:", profile);
+                    // Esconde loading, mostra chat
+                    initialLoadingView.classList.add('hidden'); 
+                    authView.classList.add('hidden'); 
+                    chatView.classList.remove('hidden'); 
+                    userEmailSpan.textContent = user.email; 
+                    userEmailSpan.title = user.email; // Adiciona tooltip
+
+                    // Habilita inputs
                     chatInput.disabled = false; sendButton.disabled = false; recordAudioButton.disabled = false; toggleAttachmentButton.disabled = false; searchInput.disabled = false;
+                    
                     loadConversations(user.id);
                     handleNewChat(); // Garante que comece em nova conversa
+                    updateFreemiumUI(); // Aplica regras (trava inputs se limite atingido)
+                    setupRealtimeProfileListener(user); // Ouve mudanças (plano, contagem)
                 } else {
-                     // Mantém desabilitado se ensureProfileExists falhar
-                     showToast("Falha ao verificar/criar perfil. Funcionalidades limitadas.", "error", 10000);
+                     // Falha crítica ao carregar o perfil
+                     console.error("Falha crítica ao carregar perfil inicial. Tentando criar/verificar...");
+                     const profileOk = await ensureProfileExists(user);
+                     if (profileOk) {
+                         // Tenta buscar de novo
+                         console.log("Tentando recarregar perfil após ensureProfileExists...");
+                         const newProfile = await fetchUserProfile(user);
+                         if (newProfile) {
+                            console.log("Perfil recarregado com sucesso:", newProfile);
+                            initialLoadingView.classList.add('hidden'); 
+                            authView.classList.add('hidden'); 
+                            chatView.classList.remove('hidden'); 
+                            userEmailSpan.textContent = user.email; 
+                            userEmailSpan.title = user.email;
+
+                            chatInput.disabled = false; sendButton.disabled = false; recordAudioButton.disabled = false; toggleAttachmentButton.disabled = false; searchInput.disabled = false;
+                            loadConversations(user.id);
+                            handleNewChat(); 
+                            updateFreemiumUI(); 
+                            setupRealtimeProfileListener(user);
+                         } else {
+                            console.error("Falha ao recarregar perfil mesmo após ensureProfileExists.");
+                            showToast("Falha grave ao carregar seu perfil. O app não pode continuar.", "error", 10000);
+                            initialLoadingView.classList.add('hidden'); // Esconde loading
+                            authView.classList.remove('hidden'); // Mostra Auth (fallback)
+                            showAuthMessage("Erro ao carregar seu perfil. Tente logar novamente.", "error");
+                            await handleLogout(); // Desloga o usuário se não há perfil
+                         }
+                     } else {
+                        console.error("Falha ao criar/verificar perfil via ensureProfileExists.");
+                        showToast("Falha grave ao criar/verificar seu perfil. O app não pode continuar.", "error", 10000);
+                        initialLoadingView.classList.add('hidden'); // Esconde loading
+                        authView.classList.remove('hidden'); // Mostra Auth (fallback)
+                        showAuthMessage("Erro ao configurar seu perfil. Tente logar novamente.", "error");
+                        await handleLogout(); // Desloga o usuário se não há perfil
+                     }
                 }
+                
             } else {
-                initialLoadingView.classList.add('hidden'); authView.classList.remove('hidden'); chatView.classList.add('hidden');
-                // Habilita inputs ao deslogar (eles estarão na tela de login/registro)
+                // Usuário deslogado ou sessão expirou
+                console.log("Nenhum usuário logado.");
+                initialLoadingView.classList.add('hidden'); // Esconde loading
+                authView.classList.remove('hidden'); // Mostra Auth
+                chatView.classList.add('hidden');
+                // Habilita inputs (eles estarão na tela de login/registro)
                 chatInput.disabled = false; sendButton.disabled = false; recordAudioButton.disabled = false; toggleAttachmentButton.disabled = false; searchInput.disabled = false;
+                
+                // Limpa o perfil e canal
+                userProfile = null;
+                if (realtimeProfileChannel) {
+                    supabaseClient.removeChannel(realtimeProfileChannel);
+                    realtimeProfileChannel = null;
+                }
             }
         }
 
@@ -911,47 +1388,109 @@
          * Inicialização da Aplicação
          */
         async function initApp() {
-            const savedTheme = localStorage.getItem('theme'); const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches; if (savedTheme) setTheme(savedTheme); else if (prefersDark) setTheme('dark'); else setTheme('light');
-            lucide.createIcons();
+            try { // ** NOVO: try/catch global para inicialização **
+                const savedTheme = localStorage.getItem('theme'); 
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches; 
+                if (savedTheme) {
+                    setTheme(savedTheme);
+                } else if (prefersDark) {
+                    setTheme('dark'); 
+                } else {
+                    setTheme('light'); 
+                }
+                // ** CORREÇÃO: Chama createIcons() aqui, APÓS o tema ser definido, e se lucide existir **
+                if (window.lucide) {
+                     lucide.createIcons();
+                } else {
+                    console.warn("Lucide ainda não carregado no ponto inicial de initApp");
+                    // Tenta novamente após um pequeno delay se falhar inicialmente
+                    setTimeout(() => {
+                        if (window.lucide) {
+                             lucide.createIcons();
+                             console.log("Lucide inicializado após delay.");
+                        } else {
+                            console.error("Lucide NÃO carregou após delay.");
+                        }
+                    }, 500); // 500ms delay
+                }
 
-            // --- Listeners ---
-            showRegisterLink.addEventListener('click', (e) => { e.preventDefault(); toggleAuthView('register'); });
-            showLoginLink.addEventListener('click', (e) => { e.preventDefault(); toggleAuthView('login'); });
-            loginForm.addEventListener('submit', handleLogin);
-            registerForm.addEventListener('submit', handleRegister);
-            logoutButton.addEventListener('click', handleLogout);
-            chatForm.addEventListener('submit', handleSendMessage);
-            deleteConversationButton.addEventListener('click', () => { if (!activeConversationId && chatMessagesContent.children.length <= 1) { showToast('Nada para apagar.', 'info'); return; } showConfirmModal('Apagar Conversa','Tem certeza que deseja apagar esta conversa permanentemente?','Apagar', handleDeleteConversation); });
-            chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } });
-            chatInput.addEventListener('input', autoResizeTextarea);
-            newChatButton.addEventListener('click', handleNewChat);
-            toggleSidebarButton.addEventListener('click', toggleSidebar);
-            sidebarOverlay.addEventListener('click', toggleSidebar);
-            recordAudioButton.addEventListener('click', handleToggleRecording);
-            toggleAttachmentButton.addEventListener('click', (e) => { e.stopPropagation(); attachmentMenu.classList.toggle('hidden'); if (!attachmentMenu.classList.contains('hidden')) { void attachmentMenu.offsetWidth; attachmentMenu.classList.remove('opacity-0', 'scale-95', '-translate-y-2'); } else { attachmentMenu.classList.add('opacity-0', 'scale-95', '-translate-y-2'); } });
-            document.addEventListener('click', (e) => { if (!attachmentMenu.classList.contains('hidden') && !toggleAttachmentButton.contains(e.target) && !attachmentMenu.contains(e.target)) { attachmentMenu.classList.add('opacity-0', 'scale-95', '-translate-y-2'); setTimeout(() => attachmentMenu.classList.add('hidden'), 200); } }); // Fechar menu ao clicar fora
-            const closeMenu = () => { attachmentMenu.classList.add('opacity-0', 'scale-95', '-translate-y-2'); setTimeout(() => attachmentMenu.classList.add('hidden'), 200); };
-            attachImageButton.addEventListener('click', () => { imageUploadInput.click(); closeMenu(); });
-            attachVideoButton.addEventListener('click', () => { videoUploadInput.click(); closeMenu(); });
-            imageUploadInput.addEventListener('change', handleImageUpload);
-            videoUploadInput.addEventListener('change', handleVideoUpload);
-            cancelUploadButton.addEventListener('click', hideUploadPreview); // **NOVO**
-            modalCancelButton.addEventListener('click', closeModal);
-            modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
-            modalConfirmButton.addEventListener('click', () => { if (modalConfirmCallback) modalConfirmCallback(); });
-            themeToggleButton.addEventListener('click', toggleTheme);
-            searchInput.addEventListener('input', filterConversations); // **NOVO**
-            chatMessagesContainer.addEventListener('scroll', () => { /* ... (Scroll button logic - sem mudanças) ... */ const isScrolledUp = chatMessagesContainer.scrollHeight - chatMessagesContainer.scrollTop - chatMessagesContainer.clientHeight > SCROLL_THRESHOLD; if (isScrolledUp) { scrollToBottomButton.classList.remove('hidden', 'opacity-0'); } else { scrollToBottomButton.classList.add('opacity-0'); setTimeout(() => { if (!(chatMessagesContainer.scrollHeight - chatMessagesContainer.scrollTop - chatMessagesContainer.clientHeight > SCROLL_THRESHOLD)) { scrollToBottomButton.classList.add('hidden'); } }, 200); } });
-            scrollToBottomButton.addEventListener('click', () => { chatMessagesContainer.scrollTo({ top: chatMessagesContainer.scrollHeight, behavior: 'smooth' }); });
+                // --- Listeners ---
+                showRegisterLink.addEventListener('click', (e) => { e.preventDefault(); toggleAuthView('register'); });
+                showLoginLink.addEventListener('click', (e) => { e.preventDefault(); toggleAuthView('login'); });
+                loginForm.addEventListener('submit', handleLogin);
+                registerForm.addEventListener('submit', handleRegister);
+                logoutButton.addEventListener('click', handleLogout);
+                chatForm.addEventListener('submit', handleSendMessage);
+                deleteConversationButton.addEventListener('click', () => { if (!activeConversationId && chatMessagesContent.children.length <= 1) { showToast('Nada para apagar.', 'info'); return; } showConfirmModal('Apagar Conversa','Tem certeza que deseja apagar esta conversa permanentemente?','Apagar', handleDeleteConversation); });
+                chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } });
+                chatInput.addEventListener('input', autoResizeTextarea);
+                newChatButton.addEventListener('click', handleNewChat);
+                toggleSidebarButton.addEventListener('click', toggleSidebar);
+                sidebarOverlay.addEventListener('click', toggleSidebar);
+                recordAudioButton.addEventListener('click', handleToggleRecording);
+                toggleAttachmentButton.addEventListener('click', (e) => { e.stopPropagation(); attachmentMenu.classList.toggle('hidden'); if (!attachmentMenu.classList.contains('hidden')) { void attachmentMenu.offsetWidth; attachmentMenu.classList.remove('opacity-0', 'scale-95', '-translate-y-2'); } else { attachmentMenu.classList.add('opacity-0', 'scale-95', '-translate-y-2'); } });
+                document.addEventListener('click', (e) => { if (!attachmentMenu.classList.contains('hidden') && !toggleAttachmentButton.contains(e.target) && !attachmentMenu.contains(e.target)) { attachmentMenu.classList.add('opacity-0', 'scale-95', '-translate-y-2'); setTimeout(() => attachmentMenu.classList.add('hidden'), 200); } }); // Fechar menu ao clicar fora
+                const closeMenu = () => { attachmentMenu.classList.add('opacity-0', 'scale-95', '-translate-y-2'); setTimeout(() => attachmentMenu.classList.add('hidden'), 200); };
+                attachImageButton.addEventListener('click', () => { imageUploadInput.click(); closeMenu(); });
+                attachVideoButton.addEventListener('click', () => { videoUploadInput.click(); closeMenu(); });
+                imageUploadInput.addEventListener('change', handleImageUpload);
+                videoUploadInput.addEventListener('change', handleVideoUpload);
+                cancelUploadButton.addEventListener('click', hideUploadPreview); // **NOVO**
+                modalCancelButton.addEventListener('click', closeModal);
+                modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
+                modalConfirmButton.addEventListener('click', () => { if (modalConfirmCallback) modalConfirmCallback(); });
+                themeToggleButton.addEventListener('click', toggleTheme);
+                searchInput.addEventListener('input', filterConversations); // **NOVO**
+                chatMessagesContainer.addEventListener('scroll', () => { /* ... (Scroll button logic - sem mudanças) ... */ const isScrolledUp = chatMessagesContainer.scrollHeight - chatMessagesContainer.scrollTop - chatMessagesContainer.clientHeight > SCROLL_THRESHOLD; if (isScrolledUp) { scrollToBottomButton.classList.remove('hidden', 'opacity-0'); } else { scrollToBottomButton.classList.add('opacity-0'); setTimeout(() => { if (!(chatMessagesContainer.scrollHeight - chatMessagesContainer.scrollTop - chatMessagesContainer.clientHeight > SCROLL_THRESHOLD)) { scrollToBottomButton.classList.add('hidden'); } }, 200); } });
+                scrollToBottomButton.addEventListener('click', () => { chatMessagesContainer.scrollTo({ top: chatMessagesContainer.scrollHeight, behavior: 'smooth' }); });
+
+                // ** NOVO: Aplica máscara ao campo WhatsApp **
+                if (window.IMask && regWhatsappInput) {
+                    whatsappMask = IMask(regWhatsappInput, {
+                        mask: '(00) 00000-0000'
+                    });
+                } else {
+                    console.warn("IMask não carregado ou campo WhatsApp não encontrado.");
+                }
 
 
-            // --- Checagem de Sessão ---
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            await updateUserState(session?.user || null);
+                // --- Checagem de Sessão ---
+                // ** CORREÇÃO: Trata erro na checagem inicial da sessão **
+                let initialSession = null;
+                try {
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    initialSession = session;
+                } catch (sessionError) {
+                    console.error("Erro ao obter sessão inicial:", sessionError);
+                    initialErrorMessage.textContent = `Erro ao conectar: ${sessionError.message}. Tente recarregar.`;
+                    initialErrorMessage.classList.remove('hidden');
+                    // Não esconde o loading aqui, mostra o erro nele
+                    return; // Interrompe a inicialização
+                }
+                
+                await updateUserState(initialSession?.user || null);
 
-            supabaseClient.auth.onAuthStateChange(async (event, session) => {
-                await updateUserState(session?.user || null);
-            });
+                // ** CORREÇÃO: Trata erro no listener de autenticação **
+                supabaseClient.auth.onAuthStateChange(async (event, session) => {
+                    try {
+                        await updateUserState(session?.user || null);
+                    } catch (updateError) {
+                        console.error("Erro durante onAuthStateChange -> updateUserState:", updateError);
+                        showToast("Erro ao atualizar estado do usuário.", "error");
+                        initialLoadingView.classList.add('hidden'); // Garante que loading saia
+                        authView.classList.remove('hidden'); // Mostra Auth como fallback
+                        showAuthMessage("Ocorreu um erro. Tente fazer login novamente.", "error");
+                    }
+                });
+
+            } catch (initError) { // ** NOVO: Pega erros gerais na inicialização **
+                console.error("Erro fatal durante a inicialização:", initError);
+                initialLoadingView.classList.remove('hidden'); // Mantém loading visível
+                initialErrorMessage.textContent = `Erro inesperado: ${initError.message}. Recarregue a página.`;
+                initialErrorMessage.classList.remove('hidden');
+                 // Opcional: tentar deslogar o usuário para forçar um estado limpo na recarga
+                 try { await handleLogout(); } catch (_) {}
+            }
         }
 
         initApp();
